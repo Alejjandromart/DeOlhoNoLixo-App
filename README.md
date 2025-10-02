@@ -60,9 +60,20 @@ DeOlhoNoLixo/
 │   │   ├── Profile/         # Telas de perfil e configurações
 │   │   ├── Denuncia/        # Telas relacionadas às denúncias (Criar, Detalhes)
 │   │   └── Feed/            # Telas do feed e interações
-│   ├── navigation/          # Configuração de rotas (Stack, Tab, Drawer)
-│   ├── services/            # Serviços externos (API, integração com backend)
-│   ├── hooks/               # Hooks personalizados│ 
+│   |
+├── backend/                 # Código de Lógica
+│   ├── ai/                  # Módulo de Inteligência Artificial 🤖
+│   │   ├── classifiers/     # Classes de classificação (simples/contextual)
+│   │   │   ├── ClassificadorSimples.js
+│   │   │   └── ClassificadorContextual.js
+│   │   ├── services/        # Serviços externos (AWS Rekognition, APIs IBGE/OSM)
+│   │   │   ├── rekognition.js
+│   │   │   ├── overpass.js
+│   │   │   └── ibge.js
+│   │   ├── utils/           # Funções auxiliares (cache, fallback, logs)
+│   │   └── tests/           # Testes unitários da IA
+│   │
+│   ├── data/                # Módulo de Inteligência Artificial 🤖
 │
 ├── # Configurações do sistema
 └── README.md                # Documentação do projeto
