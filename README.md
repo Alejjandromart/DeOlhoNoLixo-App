@@ -1,6 +1,3 @@
-Formatter Hero
-
-Formatter Hero
 
 # 📱 DeOlho NoLixo – Mobile App
 
@@ -103,7 +100,7 @@ yarn install
 * **Prettier – Code formatter** → formatação de código.
 * **ESLint** → padronização e qualidade do código.
 * **ES7+ React/Redux/React-Native snippets** → snippets úteis para agilizar.
-* Formatter Hero → organiza imports automaticamente.
+* **Formatter Hero** → organiza imports automaticamente.
 
 ---
 
