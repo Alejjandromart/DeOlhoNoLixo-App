@@ -1,6 +1,3 @@
-Formatter Hero
-
-Formatter Hero
 
 # 📱 DeOlho NoLixo – Mobile App
 
