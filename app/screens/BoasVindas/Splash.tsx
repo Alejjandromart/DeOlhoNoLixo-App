@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { StyleSheet } from "react-native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { hideAsync } from 'expo-splash-screen';
+import { useNavigation } from '@react-navigation/native';
+import type { RootStackParamList } from '../../navigation/RootStack';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 type Props = {
     onComplete?: (status: boolean) => void;
@@ -9,6 +12,7 @@ type Props = {
 
 export function Splash({ onComplete }: Props) {
     const [lastStatus, setLastStatus] = useState<AVPlaybackStatus>({} as AVPlaybackStatus);
+    const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
     function onPlaybackStatusUpdate(status: AVPlaybackStatus) {
         if (status.isLoaded) {
@@ -16,6 +20,7 @@ export function Splash({ onComplete }: Props) {
             // Verifica se o vídeo terminou
             if (status.didJustFinish) {
                 onComplete?.(true); // Chama onComplete se definido
+                navigation.navigate('Onboarding'); // Redireciona para a próxima página
             }
         }
     }
@@ -31,3 +36,5 @@ export function Splash({ onComplete }: Props) {
         />
     );
 }
+
+export default Splash;
