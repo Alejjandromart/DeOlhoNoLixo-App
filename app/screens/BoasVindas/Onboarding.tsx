@@ -5,6 +5,11 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import {Gesture, GestureDetector, Directions} from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import type { RootStackParamList } from '../../navigation/RootStack';
+import { StackNavigationProp } from '@react-navigation/stack';
+export { useRouter } from 'expo-router';
+
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -24,7 +29,7 @@ const onboardSteps = [
   {
     icon:"map_marker_radius_outline",
     title: "Denuncie em Segundos",
-    description: "O poder está em suas mãos. Use a câmera e a localização para registrar o problema. Nós cuidamos do resto.",
+    description: "O poder está em suas mãos. Use a câmera e a localização para"
   },
   {
     icon:"progress_check",
@@ -35,6 +40,7 @@ const onboardSteps = [
 
 export function Onboarding() {
   const [screenIndex, setScreenIndex] = useState(0);
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   
   // Valor compartilhado para controlar a posição do carrossel
   const translateX = useSharedValue(0);
@@ -96,8 +102,7 @@ export function Onboarding() {
 
   const endOnboarding = () => {
     setScreenIndex(0);
-    // push('/'); para direcionar para a tela de boas vindas
-    router.back();
+    navigation.navigate('Welcome');
   };
 
   return (  
@@ -250,4 +255,6 @@ const styles = StyleSheet.create({
   }
 
 });
+
+export default Onboarding;
 
