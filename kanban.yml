@@ -1,0 +1,267 @@
+kanban:
+  name: 🌎 DeOlho NoLixo - Quadro de Desenvolvimento Completo
+  description: >
+    Projeto acadêmico DeOlho NoLixo - Aplicativo para denúncia de descarte irregular de lixo,
+    com IA para classificação de impacto ambiental, backend Express.js e banco de dados NoSQL (MongoDB + Redis).
+    Desenvolvimento dividido entre equipes Mobile, IA, Backend e Banco de Dados.
+
+  columns:
+    - name: 📝 A Fazer
+      description: Tarefas planejadas e aguardando início.
+    - name: 🚧 Em Progresso
+      description: Funcionalidades atualmente em desenvolvimento.
+    - name: 🧪 Em Teste
+      description: Recursos em fase de validação e QA.
+    - name: ✅ Concluído
+      description: Funcionalidades entregues e testadas.
+
+  tasks:
+
+  # =====================================================
+  # 📱 MOBILE (React Native + Expo + TypeScript)
+  # =====================================================
+
+    - title: 💫 Tela Splash / Inicialização
+      area: Mobile
+      responsavel: Dev Mobile 1
+      prioridade: Média
+      tempo_estimado: 1 dia
+      descricao: >
+        Criar tela inicial com logo animado e carregamento das configurações do app.
+        Verificar se há sessão ativa e redirecionar automaticamente para Login ou Home.
+      requisitos: [RF-H1, RNF-H6-1]
+      dependencias: []
+      status: 📝 A Fazer
+
+    - title: 🔐 Tela de Login e Autenticação
+      area: Mobile
+      responsavel: Dev Mobile 1
+      prioridade: Alta
+      tempo_estimado: 2 dias
+      descricao: >
+        Implementar tela de login com validação de e-mail/senha, tratamento de erros,
+        integração com backend e persistência de sessão.
+      requisitos: [RF-H1, RN-H1-01, RN-H1-02, RN-H1-03]
+      dependencias: [💫 Tela Splash / Inicialização]
+      status: 🚧 Em Progresso
+
+    - title: 🧾 Tela de Cadastro de Usuário
+      area: Mobile
+      responsavel: Dev Mobile 1
+      prioridade: Alta
+      tempo_estimado: 2 dias
+      descricao: >
+        Criar tela de cadastro com campos de nome, e-mail, senha e confirmação.
+        Adicionar validações, tratamento de erros e redirecionamento pós-cadastro.
+      requisitos: [RF-H2, RN-H2-01 até RN-H2-07]
+      dependencias: [🔐 Tela de Login e Autenticação]
+      status: 📝 A Fazer
+
+    - title: 🧭 Tela Inicial / Home
+      area: Mobile
+      responsavel: Dev Mobile 2
+      prioridade: Média
+      tempo_estimado: 1 dia
+      descricao: >
+        Exibir botões principais do app ("Denunciar", "Feed", "Perfil").
+        Incluir mensagem de boas-vindas e visual dinâmico.
+      requisitos: [RF-H6, RN-H6-01]
+      dependencias: [🔐 Tela de Login e Autenticação]
+      status: 📝 A Fazer
+
+    - title: 📸 Tela de Criar Denúncia
+      area: Mobile
+      responsavel: Dev Mobile 2
+      prioridade: Alta
+      tempo_estimado: 3 dias
+      descricao: >
+        Formulário com captura de imagem (camera/gallery), descrição, localização via GPS e categoria.
+        Enviar dados para backend e aguardar classificação da IA.
+      requisitos: [RF-H4, RF-H7, RF-H8, RN-H4-01 até RN-H7-02]
+      dependencias: [🧭 Tela Inicial / Home]
+      status: 🚧 Em Progresso
+
+    - title: 🌍 Tela de Feed de Denúncias
+      area: Mobile
+      responsavel: Dev Mobile 2
+      prioridade: Alta
+      tempo_estimado: 2 dias
+      descricao: >
+        Exibir denúncias recentes com foto, local e impacto ambiental retornado pela IA.
+        Permitir filtros por região e tipo de resíduo.
+      requisitos: [RF-H16, RN-H16-01, RN-H16-02, RN-H16-03]
+      dependencias: [📸 Tela de Criar Denúncia]
+      status: 📝 A Fazer
+
+    - title: 💬 Tela de Comentários e Interações
+      area: Mobile
+      responsavel: Dev Mobile 2
+      prioridade: Média
+      tempo_estimado: 2 dias
+      descricao: >
+        Permitir comentar, curtir e compartilhar denúncias.
+        Adicionar botão de reportar conteúdo indevido.
+      requisitos: [RF-H16, RNF-H16-1, RNF-H16-2]
+      dependencias: [🌍 Tela de Feed de Denúncias]
+      status: 📝 A Fazer
+
+  # =====================================================
+  # ⚙️ BACKEND (Express.js)
+  # =====================================================
+
+    - title: 🧩 Estrutura Base do Servidor
+      area: Backend
+      responsavel: Dev Backend
+      prioridade: Alta
+      tempo_estimado: 1 dia
+      descricao: >
+        Configurar servidor Express, middlewares de segurança, CORS e parser JSON.
+      requisitos: [RNF-Backend]
+      dependencias: []
+      status: 🚧 Em Progresso
+
+    - title: 🔑 Rotas de Autenticação
+      area: Backend
+      responsavel: Dev Backend
+      prioridade: Alta
+      tempo_estimado: 2 dias
+      descricao: >
+        Criar endpoints de login, registro e recuperação de senha.
+        Implementar JWT para autenticação.
+      requisitos: [RF-H1, RF-H2, RF-H3]
+      dependencias: [🧩 Estrutura Base do Servidor]
+      status: 📝 A Fazer
+
+    - title: 🗂️ CRUD de Denúncias
+      area: Backend
+      responsavel: Dev Backend
+      prioridade: Alta
+      tempo_estimado: 3 dias
+      descricao: >
+        Implementar rotas para criar, listar, atualizar e remover denúncias.
+        Integrar upload de imagem e geolocalização.
+      requisitos: [RF-H4, RF-H7, RF-H8, RF-H14, RF-H16]
+      dependencias: [🔑 Rotas de Autenticação]
+      status: 📝 A Fazer
+
+    - title: 🔄 Integração Backend + IA
+      area: Backend
+      responsavel: Dev Backend + Dev IA
+      prioridade: Alta
+      tempo_estimado: 2 dias
+      descricao: >
+        Criar endpoint interno que envia imagens para o módulo IA e recebe classificação de impacto.
+        Armazenar resultado no MongoDB.
+      requisitos: [IA-API, RF-H14]
+      dependencias: [🗂️ CRUD de Denúncias, 🤖 Fase 1 - MVP Básico]
+      status: 🧪 Em Teste
+
+    - title: 🧱 Middleware de Logs e Segurança
+      area: Backend
+      responsavel: Dev Backend
+      prioridade: Média
+      tempo_estimado: 1 dia
+      descricao: >
+        Implementar autenticação JWT, rate limit, logs e tratamento de erros.
+      requisitos: [RNF-Segurança]
+      dependencias: [🧩 Estrutura Base do Servidor]
+      status: 📝 A Fazer
+
+  # =====================================================
+  # 🤖 INTELIGÊNCIA ARTIFICIAL (Classificação + APIs Contextuais)
+  # =====================================================
+
+    - title: 🤖 Fase 1 - MVP Básico (AWS Rekognition)
+      area: IA
+      responsavel: Dev IA 1
+      prioridade: Alta
+      tempo_estimado: 3 dias
+      descricao: >
+        Detectar objetos em imagens usando AWS Rekognition e classificar impacto simples.
+        Retornar JSON com tipo e gravidade.
+      requisitos: [IA-Fase1, AWS Rekognition]
+      dependencias: [🔄 Integração Backend + IA]
+      status: 🚧 Em Progresso
+
+    - title: 🌐 Fase 2 - Enriquecimento Contextual
+      area: IA
+      responsavel: Dev IA 2
+      prioridade: Alta
+      tempo_estimado: 1 semana
+      descricao: >
+        Integrar APIs públicas (IBGE, OpenStreetMap, SNUC, OpenWeather) para considerar contexto geográfico.
+        Gerar matriz de impacto ambiental.
+      requisitos: [IA-Fase2, APIs externas]
+      dependencias: [🤖 Fase 1 - MVP Básico]
+      status: 📝 A Fazer
+
+    - title: ⚡ Fase 3 - Refinamento e Performance
+      area: IA
+      responsavel: Dev IA 1 e 2
+      prioridade: Média
+      tempo_estimado: 1 semana
+      descricao: >
+        Implementar cache, fallback, logs e melhoria das regras regionais (Amazônia, Zonas costeiras).
+      requisitos: [IA-Fase3, Cache, Redis]
+      dependencias: [🌐 Fase 2 - Enriquecimento Contextual]
+      status: 📝 A Fazer
+
+    - title: 🧪 Testes e Validação de IA
+      area: IA
+      responsavel: QA IA
+      prioridade: Alta
+      tempo_estimado: 2 dias
+      descricao: >
+        Testar precisão das classificações e tempo de resposta.
+        Documentar métricas de performance e taxa de acertos.
+      requisitos: [RNF-IA-Testes]
+      dependencias: [⚡ Fase 3 - Refinamento e Performance]
+      status: 🧪 Em Teste
+
+  # =====================================================
+  # 🗄️ BANCO DE DADOS (MongoDB + Redis)
+  # =====================================================
+
+    - title: 🧱 Configuração do MongoDB
+      area: Banco de Dados
+      responsavel: Dev BD
+      prioridade: Alta
+      tempo_estimado: 1 dia
+      descricao: >
+        Configurar conexão com MongoDB, criar schemas e collections para usuários, denúncias e logs.
+      requisitos: [NoSQL, Mongoose]
+      dependencias: [🧩 Estrutura Base do Servidor]
+      status: 🚧 Em Progresso
+
+    - title: 🔗 Integração MongoDB + Backend
+      area: Banco de Dados
+      responsavel: Dev BD + Dev Backend
+      prioridade: Alta
+      tempo_estimado: 2 dias
+      descricao: >
+        Conectar rotas Express com MongoDB usando Mongoose e validar dados.
+      requisitos: [CRUD Denúncias, Usuários]
+      dependencias: [🧱 Configuração do MongoDB, 🗂️ CRUD de Denúncias]
+      status: 📝 A Fazer
+
+    - title: ⚙️ Configuração do Redis
+      area: Banco de Dados
+      responsavel: Dev BD
+      prioridade: Média
+      tempo_estimado: 2 dias
+      descricao: >
+        Implementar Redis para cache da IA e filas de processamento de denúncias.
+      requisitos: [Cache, Redis]
+      dependencias: [🤖 Fase 1 - MVP Básico]
+      status: 📝 A Fazer
+
+    - title: 💾 Backup e Monitoramento
+      area: Banco de Dados
+      responsavel: Dev BD
+      prioridade: Média
+      tempo_estimado: 1 dia
+      descricao: >
+        Configurar backup automático e logs de operações críticas no banco.
+      requisitos: [RNF-Backup]
+      dependencias: [🔗 Integração MongoDB + Backend]
+      status: 📝 A Fazer
