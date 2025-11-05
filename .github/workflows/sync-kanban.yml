@@ -1,0 +1,32 @@
+name: Sync Kanban to GitHub Projects
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'kanban.yml'
+  workflow_dispatch:
+
+jobs:
+  sync-kanban:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml requests
+
+      - name: Sync Kanban to GitHub Projects
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+        run: |
+          python .github/scripts/sync_kanban.py
