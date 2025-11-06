@@ -7,7 +7,6 @@ import {
   ImageBackground,
   TouchableOpacity,
   StatusBar,
-  SafeAreaView,
   Image,
   TextInput,
   Dimensions,
@@ -15,12 +14,13 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Alert,
-  
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from "../../../lib/supabase";
+import BackButton from '../../components/BackButton';
+// ...existing code...
 import * as Linking from 'expo-linking';
 
 
@@ -133,24 +133,12 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
     navigation.navigate('AppHome', { userInfo: { name: email, email: '' } });
   };
 
-  // --- MODIFICAÇÃO IMPORTANTE AQUI ---
-  // A função que antes só dava console.log agora chama o promptAsync do Google
+
   const handleGoogleLoginPress = async () => {
   if (loading) return; // Previne cliques múltiplos
   setLoading(true); // Inicia o carregamento
 
-  const redirectUrl = Linking.createURL('/');
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: redirectUrl,
-    },
-  });
-
-  if (error) {
-    Alert.alert('Erro', error.message);
-    console.error('Erro no login com Google:', error);
-  }
+  // TODO: Implementar nova lógica de login com Google
 
   setLoading(false); // Finaliza o carregamento (mesmo se der erro)
 };
@@ -162,8 +150,10 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
 
   // --- Renderização do Componente (Sem alterações na estrutura) ---
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
+      <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
+      {/* Back button fixo no topo */}
+      <BackButton onPress={handleBackPress} style={styles.backButton} color="#FFFFFF" size={28} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -180,11 +170,8 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
             resizeMode="cover"
           >
             <View style={styles.topOverlay} />
-            <TouchableOpacity style={styles.backButton} onPress={handleBackPress} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
             <View style={styles.logoContainer}>
-              <Image source={require('../../assets/images/LogoDeOlho.png')} style={styles.logo} resizeMode="contain" />
+              <Image source={require('../../assets/images/LogoDeOlhoSNome.png')} style={styles.logo} resizeMode="contain" />
             </View>
           </ImageBackground>
 
@@ -245,14 +232,12 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
               <Text style={styles.loginButtonText}>Entrar</Text>
             </TouchableOpacity>
 
-            {/* Divider */}
             <View style={styles.dividerContainer}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>Ou</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Google Button - Agora ele funciona! */}
             <TouchableOpacity 
               style={styles.googleButton} 
               onPress={handleGoogleLoginPress} 
@@ -267,7 +252,6 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
               
             </TouchableOpacity>
 
-            {/* Register Link */}
             <View style={styles.registerContainer}>
               <Text style={styles.registerText}>Ainda não tem conta? </Text>
               <TouchableOpacity onPress={handleRegisterPress} activeOpacity={0.7}>
@@ -281,7 +265,6 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
   );
 };
 
-// --- Estilos (sem alterações) ---
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#115E4C' },
   keyboardView: { flex: 1 },
@@ -290,8 +273,8 @@ const styles = StyleSheet.create({
   topOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(26, 77, 46, 0.5)' },
   backButton: { position: 'absolute', top: Platform.OS === 'android' ? StatusBar.currentHeight || 40 : 50, left: 20, width: 44, height: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 22, backgroundColor: 'rgba(0, 0, 0, 0.2)', zIndex: 10 },
   logoContainer: { justifyContent: 'center', alignItems: 'center' },
-  logo: { width: width * 0.25, height: width * 0.25, maxWidth: 120, maxHeight: 120 },
-  cardContainer: { flex: 1, backgroundColor: '#115E4C', borderTopLeftRadius: 40, borderTopRightRadius: 40, marginTop: -40, paddingHorizontal: 28, paddingTop: 40, paddingBottom: 30, minHeight: height * 0.65 },
+  logo: { width: width * 0.5, height: width * 0.5, maxWidth: 250, maxHeight: 250 },
+  cardContainer: { flex: 1, backgroundColor: '#115E4C', borderTopLeftRadius: 40, borderTopRightRadius: 40, marginTop: -40, paddingHorizontal: 28, paddingTop: 24, paddingBottom: 20 },
   welcomeTitle: { fontSize: 28, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', marginBottom: 24, letterSpacing: 0.5 },
   inputSection: { marginBottom: 16, gap: 4 },
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'transparent', borderWidth: 2, borderColor: 'rgba(255, 255, 255, 0.4)', borderRadius: 28, paddingHorizontal: 18, height: 56, marginTop: 12 },

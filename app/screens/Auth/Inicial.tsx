@@ -6,11 +6,11 @@ import {
   ImageBackground,
   TouchableOpacity,
   StatusBar,
-  SafeAreaView,
   Image,
   Dimensions,
-  Platform
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -98,12 +98,12 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1e8849ff',
+    backgroundColor: 'transparent',
   },
   backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
+    width: undefined,
+    height: undefined,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
