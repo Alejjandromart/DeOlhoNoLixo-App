@@ -44,8 +44,7 @@ module.exports = {
       typedRoutes: true
     },
     extra: {
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+  // ...existing code...
       eas: {
         projectId: "d80d11f6-aaac-48b6-a1be-83033f23b782"
       }

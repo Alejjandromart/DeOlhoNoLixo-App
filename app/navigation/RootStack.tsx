@@ -1,11 +1,10 @@
 // src/navigation/RootStack.tsx
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Splash } from '../screens/BoasVindas/Splash';
-import { Onboarding } from "../screens/BoasVindas/Onboarding";
-import Inicial from '../screens/BoasVindas/Inicial';
-import { supabase } from '../../lib/supabase';
-import LoginScreen from '../screens/BoasVindas/Login';
+import { Splash } from '../screens/Auth/Splash';
+import OnboardingScreen from "../screens/Auth/Onboarding";
+import Inicial from '../screens/Auth/Inicial';
+import LoginScreen from '../screens/Auth/Login';
 // Implemente posteriormente
 //import RegisterScreen from '../screens/RegisterScreen';
 
@@ -23,7 +22,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 const RootStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Splash" component={Splash} />
-    <Stack.Screen name="Onboarding" component={Onboarding} />
+    <Stack.Screen name="Onboarding" component={OnboardingScreen} />
     <Stack.Screen name="Welcome" component={Inicial} />
     <Stack.Screen name="Login" component={LoginScreen} />
     {/*<Stack.Screen name="Register" component={RegisterScreen} />*/}
