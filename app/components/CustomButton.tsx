@@ -13,11 +13,11 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import {OnboardingData} from '../data/data';
 import {StackNavigationProp} from '@react-navigation/stack';
-import type { RootStackParamList } from '../navigation/RootStack';
+type RootStackParamList = Record<string, object | undefined>;
 
 type Props = {
   dataLength: number;
@@ -75,7 +75,7 @@ const CustomButton = ({flatListRef, flatListIndex, dataLength, x}: Props) => {
     const backgroundColor = interpolateColor(
       x.value,
       [0, SCREEN_WIDTH, 2 * SCREEN_WIDTH],
-      ['#005b4f', '#17a6e9ff', '#a98578ff'],
+      ['#005b4f', '#1e2169', '#a98578ff'],
     );
 
     return {
@@ -89,8 +89,7 @@ const CustomButton = ({flatListRef, flatListIndex, dataLength, x}: Props) => {
         if (flatListIndex.value < dataLength - 1) {
           flatListRef.current?.scrollToIndex({index: flatListIndex.value + 1});
         } else {
-
-          navigation.navigate('Welcome');
+          navigation.goBack();
         }
       }}>
       <Animated.View

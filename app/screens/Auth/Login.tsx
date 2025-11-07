@@ -1,73 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import {
   ActivityIndicator,
   View,
   Text,
   StyleSheet,
-  ImageBackground,
   TouchableOpacity,
-  StatusBar,
-  Image,
-  TextInput,
-  Dimensions,
-  Platform,
-  ScrollView,
-  KeyboardAvoidingView,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import BackButton from '../../components/BackButton';
-// ...existing code...
-import * as Linking from 'expo-linking';
+import { LinearGradient } from 'expo-linear-gradient';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
+import BotaoGoogle from '../../components/SocialButton';
+import CustomInput from '../../components/CustomInputCadastro';
 
+export interface LoginSheetRef {
+  abrir: () => void;
+  fechar: () => void;
+}
 
-// --- INICIALIZAÇÃO DO WEB BROWSER ---
-// Garante que o navegador da web feche após a autenticação
-
-// --- Mock Data ---
+// Mock Data
 const MOCK_VALID_USERNAMES = ['admin', 'user'];
 const MOCK_CORRECT_PASSWORD = 'password123';
 
-// --- Navigation Types ---
-type RootStackParamList = {
-  Home: undefined;
-  Login: undefined;
-  Register: undefined;
-  ForgotPassword: undefined;
-  // Adicione uma tela para onde o usuário vai após o login, ex: AppHome
-  AppHome: { userInfo: { name: string; email: string; picture?: string } };
-};
-
-type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
-
-interface LoginScreenProps {
-  navigation?: LoginScreenNavigationProp;
+interface DadosLogin {
+  email: string;
+  senha: string;
 }
 
-const { width, height } = Dimensions.get('window');
+const LoginScreen = forwardRef<LoginSheetRef>((_, ref) => {
+  const sheetRef = useRef<BottomSheetModal>(null);
 
-const LoginScreen: React.FC<LoginScreenProps> = () => {
-  const navigation = useNavigation<LoginScreenNavigationProp>();
+  useImperativeHandle(ref, () => ({
+    abrir: () => sheetRef.current?.present(),
+    fechar: () => sheetRef.current?.dismiss(),
+  }));
 
-  // --- State Management (EXISTENTE) ---
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false); // Movido para dentro do componente funcional
+  const pontos = useMemo(() => ['70%'], []);
+  const renderBackdrop = (props: any) => (
+    <BottomSheetBackdrop
+      {...props}
+      appearsOnIndex={0}
+      disappearsOnIndex={-1}
+      backgroundColor="#005b4f"
+      opacity={0.5}
+    />
+  );
 
-  // Focus and Error States (EXISTENTE)
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
+  // Estado do formulário
+  const [dados, setDados] = useState<DadosLogin>({
+    email: '',
+    senha: '',
+  });
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [carregando, setCarregando] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-
-
-
-  // --- Handlers (EXISTENTES E MODIFICADOS) ---
+  const atualizar = (campo: keyof DadosLogin, valor: string) => {
+    setDados((prev) => ({ ...prev, [campo]: valor }));
+    if (campo === 'email' && emailError) setEmailError('');
+    if (campo === 'senha' && passwordError) setPasswordError('');
+  };
 
   const validateEmailRealTime = (text: string) => {
     if (!text) {
@@ -91,211 +88,232 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
   };
 
   const isEmailValid = (text: string): boolean => {
-      if (!text) return false;
-      if (text.includes('@')) {
-          return text.endsWith('@gmail.com');
-      } else {
-          return MOCK_VALID_USERNAMES.includes(text);
-      }
+    if (!text) return false;
+    if (text.includes('@')) {
+      return text.endsWith('@gmail.com');
+    } else {
+      return MOCK_VALID_USERNAMES.includes(text);
+    }
   };
 
   const handleEmailChange = (text: string) => {
-    setEmail(text);
-    if (emailError) setEmailError('');
-    if (passwordError) setPasswordError('');
+    atualizar('email', text);
     validateEmailRealTime(text);
-  };
-
-  const handlePasswordChange = (text: string) => {
-    setPassword(text);
-    if (passwordError) setPasswordError('');
   };
 
   const handleLoginPress = () => {
     setEmailError('');
     setPasswordError('');
 
-    if (!isEmailValid(email)) {
-      if (!email) {
-          setEmailError('Campo obrigatório');
+    if (!isEmailValid(dados.email)) {
+      if (!dados.email) {
+        setEmailError('Campo obrigatório');
       } else {
-        validateEmailRealTime(email);
+        validateEmailRealTime(dados.email);
       }
       return;
     }
 
-    if (password !== MOCK_CORRECT_PASSWORD) {
+    if (dados.senha !== MOCK_CORRECT_PASSWORD) {
       setPasswordError('Senha incorreta');
       return;
     }
 
-    console.log('Login successful:', { email, password });
-    navigation.navigate('AppHome', { userInfo: { name: email, email: '' } });
+    Alert.alert('Sucesso', 'Login realizado com sucesso!');
+    sheetRef.current?.dismiss();
   };
 
-
   const handleGoogleLoginPress = async () => {
-  if (loading) return; // Previne cliques múltiplos
-  setLoading(true); // Inicia o carregamento
+    if (carregando) return;
+    setCarregando(true);
+    // TODO: Implementar lógica de login com Google
+    Alert.alert('Google', 'Integração Google aqui.');
+    setCarregando(false);
+  };
 
-  // TODO: Implementar nova lógica de login com Google
-
-  setLoading(false); // Finaliza o carregamento (mesmo se der erro)
-};
-
-  const handleBackPress = () => navigation.goBack();
-  const handleForgotPasswordPress = () => navigation.navigate('ForgotPassword');
-  const handleRegisterPress = () => navigation.navigate('Register');
-  const togglePasswordVisibility = () => setShowPassword(!showPassword);
-
-  // --- Renderização do Componente (Sem alterações na estrutura) ---
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
-      <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
-      {/* Back button fixo no topo */}
-      <BackButton onPress={handleBackPress} style={styles.backButton} color="#FFFFFF" size={28} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={pontos}
+      backdropComponent={renderBackdrop}
+      enablePanDownToClose={false}
+      keyboardBehavior="extend"
+      android_keyboardInputMode="adjustResize"
+      backgroundStyle={{ backgroundColor: 'transparent' }}
+      handleIndicatorStyle={{ backgroundColor: '#FFFFFF80', width: 48 }}
+    >
+      <LinearGradient
+        colors={['#076653', '#0E3B34']}
+        style={styles.cartao}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
+        {/* Cabeçalho */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.botaoVoltar} onPress={() => sheetRef.current?.dismiss()}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.titulo}>Login</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <BottomSheetScrollView
+          contentContainerStyle={styles.conteudo}
           showsVerticalScrollIndicator={false}
-          bounces={false}
         >
-          {/* Top Section */}
-          <ImageBackground
-            source={require('../../assets/images/backgroundInicial.png')}
-            style={styles.topSection}
-            resizeMode="cover"
+          <Text style={styles.boasVindas}>Bem-Vindo de Volta</Text>
+
+          <CustomInput
+            rotulo="Usuário ou E-mail"
+            sugestao="Digite seu usuário ou email"
+            valor={dados.email}
+            aoAlterarTexto={handleEmailChange}
+            nomeIcone="person-outline"
+            tipoTeclado="email-address"
+          />
+          {emailError ? <Text style={styles.erro}>{emailError}</Text> : null}
+
+          <CustomInput
+            rotulo="Senha*"
+            sugestao="Digite sua senha"
+            valor={dados.senha}
+            aoAlterarTexto={(t) => atualizar('senha', t)}
+            nomeIcone="lock-closed-outline"
+            entradaSegura
+            mostrarToggleSenha
+            senhaVisivel={mostrarSenha}
+            aoAlternarSenha={() => setMostrarSenha((v) => !v)}
+          />
+          {passwordError ? <Text style={styles.erro}>{passwordError}</Text> : null}
+
+          <TouchableOpacity style={{ alignSelf: 'flex-end', marginTop: 8 }}>
+            <Text style={styles.esqueceuSenha}>Esqueceu a senha?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.loginButton} 
+            onPress={handleLoginPress}
+            activeOpacity={0.8}
           >
-            <View style={styles.topOverlay} />
-            <View style={styles.logoContainer}>
-              <Image source={require('../../assets/images/LogoDeOlhoSNome.png')} style={styles.logo} resizeMode="contain" />
-            </View>
-          </ImageBackground>
+            <Text style={styles.loginButtonText}>Entrar</Text>
+          </TouchableOpacity>
 
-          {/* Card Container */}
-          <View style={styles.cardContainer}>
-            <Text style={styles.welcomeTitle}>Bem-Vindo de Volta</Text>
-            
-            {/* Campos de Input e Erros */}
-            {/* (Esta parte permanece a mesma) */}
-            <View style={styles.inputSection}>
-              <View style={[
-                styles.inputContainer,
-                emailFocused && styles.inputContainerFocused,
-                !!emailError && styles.inputContainerError
-              ]}>
-                <Ionicons name="person-outline" size={22} color="#FFFFFF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Usuario ou E-mail"
-                  placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                  value={email}
-                  onChangeText={handleEmailChange}
-                  onFocus={() => setEmailFocused(true)}
-                  onBlur={() => setEmailFocused(false)}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-              {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
-              <View style={[
-                styles.inputContainer,
-                passwordFocused && styles.inputContainerFocused,
-                !!passwordError && styles.inputContainerError
-              ]}>
-                <Ionicons name="lock-closed-outline" size={22} color="#FFFFFF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Senha"
-                  placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                  value={password}
-                  onChangeText={handlePasswordChange}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={togglePasswordVisibility} style={styles.eyeIcon} activeOpacity={0.7}>
-                  <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-              {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
-              <TouchableOpacity onPress={handleForgotPasswordPress} activeOpacity={0.7} style={styles.forgotPasswordContainer}>
-                <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Login Button */}
-            <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress} activeOpacity={0.8}>
-              <Text style={styles.loginButtonText}>Entrar</Text>
-            </TouchableOpacity>
-
-            <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Ou</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity 
-              style={styles.googleButton} 
-              onPress={handleGoogleLoginPress} 
-              activeOpacity={0.8}
-              disabled={loading} 
-            >
-                {loading ? (
-                    <ActivityIndicator size="small" color="#115E4C" />
-                ) : (
-                    <Image source={require('../../assets/images/iconGoogle.png')} style={styles.googleIcon} resizeMode="contain" />
-                )}
-              
-            </TouchableOpacity>
-
-            <View style={styles.registerContainer}>
-              <Text style={styles.registerText}>Ainda não tem conta? </Text>
-              <TouchableOpacity onPress={handleRegisterPress} activeOpacity={0.7}>
-                <Text style={styles.registerLink}>Cadastra-se</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.divisor}>
+            <View style={styles.linha} />
+            <Text style={styles.divisorTexto}>Ou</Text>
+            <View style={styles.linha} />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-};
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#115E4C' },
-  keyboardView: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
-  topSection: { width: '100%', height: height * 0.35, justifyContent: 'center', alignItems: 'center' },
-  topOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(26, 77, 46, 0.5)' },
-  backButton: { position: 'absolute', top: Platform.OS === 'android' ? StatusBar.currentHeight || 40 : 50, left: 20, width: 44, height: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 22, backgroundColor: 'rgba(0, 0, 0, 0.2)', zIndex: 10 },
-  logoContainer: { justifyContent: 'center', alignItems: 'center' },
-  logo: { width: width * 0.5, height: width * 0.5, maxWidth: 250, maxHeight: 250 },
-  cardContainer: { flex: 1, backgroundColor: '#115E4C', borderTopLeftRadius: 40, borderTopRightRadius: 40, marginTop: -40, paddingHorizontal: 28, paddingTop: 24, paddingBottom: 20 },
-  welcomeTitle: { fontSize: 28, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', marginBottom: 24, letterSpacing: 0.5 },
-  inputSection: { marginBottom: 16, gap: 4 },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'transparent', borderWidth: 2, borderColor: 'rgba(255, 255, 255, 0.4)', borderRadius: 28, paddingHorizontal: 18, height: 56, marginTop: 12 },
-  inputContainerFocused: { borderColor: '#A4D65E' },
-  inputContainerError: { borderColor: '#FF5A5F' }, 
-  inputIcon: { marginRight: 12 },
-  textInput: { flex: 1, color: '#FFFFFF', fontSize: 16, fontWeight: '500', paddingVertical: 0 },
-  eyeIcon: { padding: 4, marginLeft: 8 },
-  errorText: { color: '#FF5A5F', fontSize: 13, fontWeight: '500', paddingLeft: 20, marginTop: 6 },
-  forgotPasswordContainer: { alignSelf: 'flex-end', marginTop: 12 },
-  forgotPasswordText: { color: '#70E0C4', fontSize: 14, fontWeight: '600' },
-  loginButton: { backgroundColor: '#A4D65E', borderRadius: 28, paddingVertical: 18, alignItems: 'center', justifyContent: 'center', marginTop: 24, marginBottom: 24, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-  loginButtonText: { color: '#115E4C', fontSize: 18, fontWeight: '700', letterSpacing: 0.5 },
-  dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.3)' },
-  dividerText: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 14, fontWeight: '500', marginHorizontal: 16 },
-  googleButton: { backgroundColor: '#FFFFFF', borderRadius: 28, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 24, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6 },
-  googleIcon: { width: 28, height: 28 },
-  registerContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 },
-  registerText: { color: 'rgba(255, 255, 255, 0.7)', fontSize: 14, fontWeight: '500' },
-  registerLink: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', textDecorationLine: 'underline' },
+          <BotaoGoogle 
+            texto="Continuar com Google" 
+            aoPressionar={handleGoogleLoginPress}
+            carregando={carregando}
+          />
+
+          <TouchableOpacity style={{ alignItems: 'center', marginTop: 8 }} onPress={() => sheetRef.current?.dismiss()}>
+            <Text style={styles.rodape}>
+              Ainda não tem conta? <Text style={styles.link}>Cadastre-se</Text>
+            </Text>
+          </TouchableOpacity>
+        </BottomSheetScrollView>
+      </LinearGradient>
+    </BottomSheetModal>
+  );
 });
 
 export default LoginScreen;
+
+const styles = StyleSheet.create({
+  cartao: {
+    flex: 1,
+    marginHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 8,
+    justifyContent: 'space-between',
+  },
+  botaoVoltar: { padding: 6 },
+  titulo: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    flex: 1,
+  },
+  conteudo: {
+    paddingHorizontal: 18,
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
+  boasVindas: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 16,
+    marginTop: 6,
+  },
+  erro: { 
+    color: '#FFD6D6', 
+    marginTop: -8, 
+    marginBottom: 10, 
+    fontSize: 12 
+  },
+  esqueceuSenha: { 
+    color: '#70E0C4', 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
+  loginButton: { 
+    backgroundColor: '#A4D65E', 
+    borderRadius: 30, 
+    paddingVertical: 18, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: 24, 
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    borderColor: '#0E3B34',
+  },
+  loginButtonText: { 
+    color: '#115E4C', 
+    fontSize: 18, 
+    fontWeight: '700', 
+    letterSpacing: 0.5 
+  },
+  divisor: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginVertical: 16 
+  },
+  linha: { 
+    flex: 1, 
+    height: 1, 
+    backgroundColor: '#FFFFFF60' 
+  },
+  divisorTexto: { 
+    color: '#FFFFFF', 
+    marginHorizontal: 12, 
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  rodape: { 
+    color: '#FFFFFF', 
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  link: { 
+    textDecorationLine: 'underline', 
+    fontWeight: '700',
+    color: '#C8DEA1',
+  },
+});
