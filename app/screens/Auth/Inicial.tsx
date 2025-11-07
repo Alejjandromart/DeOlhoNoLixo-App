@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,11 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import CadastroScreen from './Cadastro';
+import type { CadastroSheetRef } from './Cadastro';
+import LoginScreen from './Login';
+import type { LoginSheetRef } from './Login';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -31,67 +36,75 @@ const { width, height } = Dimensions.get('window');
 
 const HomeScreen: React.FC<HomeScreenProps> = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const cadastroRef = useRef<CadastroSheetRef>(null);
+  const loginRef = useRef<LoginSheetRef>(null);
 
   const handleLoginPress = () => {
-    navigation.navigate('Login');
+    loginRef.current?.abrir();
   };
 
   const handleRegisterPress = () => {
-    navigation.navigate('Register');
-  };
+    cadastroRef.current?.abrir();
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
-      <ImageBackground
-        source={require('../../assets/images/backgroundInicial.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        {/* Blur/Dark Overlay for better text readability */}
-        <View style={styles.overlay} />
+    <BottomSheetModalProvider>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         
-        <View style={styles.container}>
-          {/* Logo Section - Top Third */}
-          <View style={styles.logoSection}>
-            <Image
-              source={require('../../assets/images/LogoDeOlho.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
+        <ImageBackground
+          source={require('../../assets/images/backgroundInicial.png')}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        >
+          {/* Blur/Dark Overlay for better text readability */}
+          <View style={styles.overlay} />
+          
+          <View style={styles.container}>
+            {/* Logo Section - Top Third */}
+            <View style={styles.logoSection}>
+              <Image
+                source={require('../../assets/images/LogoDeOlho.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
 
-          {/* Title and Slogan Section - Middle */}
-          <View style={styles.titleSection}>
-            
-            <View style={styles.sloganContainer}>
-              <Text style={styles.titlePrimary}>Você</Text>
-              <Text style={styles.titleSecondary}>Faz a diferença!</Text>
+            {/* Title and Slogan Section - Middle */}
+            <View style={styles.titleSection}>
+              
+              <View style={styles.sloganContainer}>
+                <Text style={styles.titlePrimary}>Você</Text>
+                <Text style={styles.titleSecondary}>Faz a diferença!</Text>
+              </View>
+            </View>
+
+            {/* Buttons Section - Bottom */}
+            <View style={styles.buttonSection}>
+              <TouchableOpacity
+                style={[styles.button, styles.loginButton]}
+                onPress={handleLoginPress}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.loginButtonText}>Login</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.registerButton]}
+                onPress={handleRegisterPress}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.registerButtonText}>Cadastrar</Text>
+              </TouchableOpacity>
             </View>
           </View>
+        </ImageBackground>
+      </SafeAreaView>
 
-          {/* Buttons Section - Bottom */}
-          <View style={styles.buttonSection}>
-            <TouchableOpacity
-              style={[styles.button, styles.loginButton]}
-              onPress={handleLoginPress}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.loginButtonText}>Login</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.button, styles.registerButton]}
-              onPress={handleRegisterPress}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.registerButtonText}>Cadastrar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ImageBackground>
-    </SafeAreaView>
+      {/* BottomSheets que sobem sobre a tela inicial */}
+      <LoginScreen ref={loginRef} />
+      <CadastroScreen ref={cadastroRef} />
+    </BottomSheetModalProvider>
   );
 };
 
