@@ -1,5 +1,5 @@
-// app/screens/CadastroScreen.tsx
-import React, { useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useMemo, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -24,31 +25,29 @@ import type {
   ResultadoValidacao,
   RespostaCadastro,
 } from '../../_types/type';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 export interface CadastroSheetRef {
   abrir: () => void;
   fechar: () => void;
 }
 
-// Simulação de serviço de cadastro (substitua pelo seu backend)
-async function cadastrar(payload: DadosCadastro): Promise<RespostaCadastro> {
-  await new Promise((r) => setTimeout(r, 900));
-  return {
-    sucesso: true,
-    mensagem: 'Cadastro realizado!',
-    usuario: {
-      id: 'usr_1',
-      nomeCompleto: payload.nomeCompleto,
-      email: payload.email,
-      nomeUsuario: payload.nomeUsuario,
-      criadoEm: new Date().toISOString(),
-    },
-    token: 'fake.jwt',
-  };
+interface CadastroScreenProps {
+  abrirLogin?: () => void;
 }
 
-const CadastroScreen = forwardRef<CadastroSheetRef>((_, ref) => {
+const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abrirLogin }, ref) => {
+  const navigation = useNavigation<any>();
+  const { signUp } = useAuth();
   const sheetRef = useRef<BottomSheetModal>(null);
+  
+  // Refs para os campos de input
+  const nomeCompletoInputRef = useRef<TextInput>(null);
+  const emailInputRef = useRef<TextInput>(null);
+  const nomeUsuarioInputRef = useRef<TextInput>(null);
+  const senhaInputRef = useRef<TextInput>(null);
+  const confirmarSenhaInputRef = useRef<TextInput>(null);
 
   useImperativeHandle(ref, () => ({
     abrir: () => sheetRef.current?.present(),
@@ -79,12 +78,11 @@ const CadastroScreen = forwardRef<CadastroSheetRef>((_, ref) => {
   const [carregando, setCarregando] = useState(false);
   const [erros, setErros] = useState<ErrosValidacao>({});
 
-  const atualizar = (campo: keyof DadosCadastro, valor: string | boolean) => {
+  const atualizar = useCallback((campo: keyof DadosCadastro, valor: string | boolean) => {
     setDados((prev) => ({ ...prev, [campo]: valor } as DadosCadastro));
-    if (erros[campo as keyof ErrosValidacao]) {
-      setErros((e) => ({ ...e, [campo]: undefined }));
-    }
-  };
+    // Limpar erro do campo ao digitar
+    setErros((e) => ({ ...e, [campo]: undefined }));
+  }, []);
 
   const emailValido = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   const validar = (d: DadosCadastro): ResultadoValidacao => {
@@ -100,25 +98,36 @@ const CadastroScreen = forwardRef<CadastroSheetRef>((_, ref) => {
 
   const resultado = useMemo(() => validar(dados), [dados]);
 
-  const onCadastrar = async () => {
+  // Função de cadastro usando Supabase
+  const handleSignUp = async () => {
     const { valido, erros: e } = validar(dados);
     if (!valido) return setErros(e);
 
     try {
       setCarregando(true);
-      const resp = await cadastrar(dados);
-      if (resp.sucesso) {
-        Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
-        sheetRef.current?.dismiss();
-      } else {
-        Alert.alert('Erro', resp.mensagem || 'Não foi possível cadastrar.');
+      
+      // Cadastrar usuário usando o contexto de autenticação
+      const { error } = await signUp(dados.email, dados.senha, {
+        nomeCompleto: dados.nomeCompleto,
+        nomeUsuario: dados.nomeUsuario,
+      });
+
+      if (error) {
+        Alert.alert('Erro', error.message);
+        return;
       }
-    } catch {
+
+      Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
+      sheetRef.current?.dismiss();
+      navigation.navigate('Tutorial');
+    } catch (err) {
       Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
     } finally {
       setCarregando(false);
     }
   };
+
+  const onCadastrar = handleSignUp;
 
   const onGoogle = () => Alert.alert('Google', 'Integração Google aqui.');
 
@@ -154,35 +163,48 @@ const CadastroScreen = forwardRef<CadastroSheetRef>((_, ref) => {
           <Text style={styles.boasVindas}>Bom ter você aqui</Text>
 
           <CustomInput
+            ref={nomeCompletoInputRef}
             rotulo="Nome Completo"
             sugestao="Digite seu nome completo"
             valor={dados.nomeCompleto}
             aoAlterarTexto={(t) => atualizar('nomeCompleto', t)}
             nomeIcone="person-outline"
             capitalizacaoAutomatica="words"
+            erro={!!erros.nomeCompleto}
+            tipoRetorno="next"
+            aoEnviar={() => emailInputRef.current?.focus()}
           />
           {erros.nomeCompleto ? <Text style={styles.erro}>{erros.nomeCompleto}</Text> : null}
 
           <CustomInput
+            ref={emailInputRef}
             rotulo="Email*"
             sugestao="Digite seu email"
             valor={dados.email}
             aoAlterarTexto={(t) => atualizar('email', t)}
             nomeIcone="mail-outline"
             tipoTeclado="email-address"
+            erro={!!erros.email}
+            tipoRetorno="next"
+            aoEnviar={() => nomeUsuarioInputRef.current?.focus()}
           />
           {erros.email ? <Text style={styles.erro}>{erros.email}</Text> : null}
 
           <CustomInput
+            ref={nomeUsuarioInputRef}
             rotulo="Nome de Usuário"
             sugestao="Digite seu nome de usuário"
             valor={dados.nomeUsuario}
             aoAlterarTexto={(t) => atualizar('nomeUsuario', t)}
             nomeIcone="person-outline"
+            erro={!!erros.nomeUsuario}
+            tipoRetorno="next"
+            aoEnviar={() => senhaInputRef.current?.focus()}
           />
           {erros.nomeUsuario ? <Text style={styles.erro}>{erros.nomeUsuario}</Text> : null}
 
           <CustomInput
+            ref={senhaInputRef}
             rotulo="Senha*"
             sugestao="Digite sua senha"
             valor={dados.senha}
@@ -192,10 +214,14 @@ const CadastroScreen = forwardRef<CadastroSheetRef>((_, ref) => {
             mostrarToggleSenha
             senhaVisivel={mostrarSenha}
             aoAlternarSenha={() => setMostrarSenha((v) => !v)}
+            erro={!!erros.senha}
+            tipoRetorno="next"
+            aoEnviar={() => confirmarSenhaInputRef.current?.focus()}
           />
           {erros.senha ? <Text style={styles.erro}>{erros.senha}</Text> : null}
 
           <CustomInput
+            ref={confirmarSenhaInputRef}
             rotulo="Confirmar Senha*"
             sugestao="Digite novamente a senha"
             valor={dados.confirmarSenha}
@@ -205,6 +231,9 @@ const CadastroScreen = forwardRef<CadastroSheetRef>((_, ref) => {
             mostrarToggleSenha
             senhaVisivel={mostrarConfirmarSenha}
             aoAlternarSenha={() => setMostrarConfirmarSenha((v) => !v)}
+            erro={!!erros.confirmarSenha}
+            tipoRetorno="done"
+            aoEnviar={onCadastrar}
           />
           {erros.confirmarSenha ? <Text style={styles.erro}>{erros.confirmarSenha}</Text> : null}
 
@@ -243,7 +272,15 @@ const CadastroScreen = forwardRef<CadastroSheetRef>((_, ref) => {
 
           <BotaoGoogle texto="Continuar com Google" aoPressionar={onGoogle} />
 
-          <TouchableOpacity style={{ alignItems: 'center', marginTop: 8 }} onPress={() => sheetRef.current?.dismiss()}>
+          <TouchableOpacity 
+            style={{ alignItems: 'center', marginTop: 8 }} 
+            onPress={() => {
+              sheetRef.current?.dismiss();
+              setTimeout(() => {
+                abrirLogin?.();
+              }, 300);
+            }}
+          >
             <Text style={styles.rodape}>
               Já tem uma conta? <Text style={styles.link}>Fazer Login</Text>
             </Text>

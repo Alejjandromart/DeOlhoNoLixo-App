@@ -1,14 +1,7 @@
-import { useFonts } from 'expo-font';
-import React from 'react';
-import RootStack from './navigation/RootStack';
+import { Redirect } from 'expo-router';
 
-export default function App() {
-    const [fontsLoaded] = useFonts({
-        'Poppins-Bold': require('./assets/fonts/Poppins-Bold.ttf'),
-        'SpaceMono-Regular': require('./assets/fonts/SpaceMono-Regular.ttf'),
-    });
-
-    if (!fontsLoaded) return null;
-
-    return <RootStack />;
+// O _layout.tsx já gerencia toda a navegação
+export default function Index() {
+  // Redireciona para a tela inicial definida no _layout
+  return null;
 }

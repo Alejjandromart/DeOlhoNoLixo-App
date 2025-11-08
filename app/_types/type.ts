@@ -13,6 +13,9 @@ export interface InputProps {
   aoAlternarSenha?: () => void;
   tipoTeclado?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
   capitalizacaoAutomatica?: 'none' | 'sentences' | 'words' | 'characters';
+  erro?: boolean; // Indica se o campo tem erro
+  aoEnviar?: () => void; // Callback quando pressiona Enter
+  tipoRetorno?: 'done' | 'next' | 'go' | 'search' | 'send'; // Tipo do botão do teclado
 }
 
 export interface BotaoProps {

@@ -38,7 +38,8 @@ module.exports = {
     },
     plugins: [
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ],
     experiments: {
       typedRoutes: true

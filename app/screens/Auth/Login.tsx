@@ -1,4 +1,5 @@
-import React, { useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useMemo, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   ActivityIndicator,
   View,
@@ -6,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -16,23 +18,32 @@ import {
 } from '@gorhom/bottom-sheet';
 import BotaoGoogle from '../../components/SocialButton';
 import CustomInput from '../../components/CustomInputCadastro';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 export interface LoginSheetRef {
   abrir: () => void;
   fechar: () => void;
 }
 
-// Mock Data
-const MOCK_VALID_USERNAMES = ['admin', 'user'];
-const MOCK_CORRECT_PASSWORD = 'password123';
+interface LoginScreenProps {
+  abrirCadastro?: () => void;
+  abrirEsqueciSenha?: () => void;
+}
 
 interface DadosLogin {
   email: string;
   senha: string;
 }
 
-const LoginScreen = forwardRef<LoginSheetRef>((_, ref) => {
+const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro, abrirEsqueciSenha }, ref) => {
+  const navigation = useNavigation<any>();
+  const { signIn } = useAuth();
   const sheetRef = useRef<BottomSheetModal>(null);
+  
+  // Refs para os campos de input
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
 
   useImperativeHandle(ref, () => ({
     abrir: () => sheetRef.current?.present(),
@@ -60,68 +71,93 @@ const LoginScreen = forwardRef<LoginSheetRef>((_, ref) => {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  const atualizar = (campo: keyof DadosLogin, valor: string) => {
+  const atualizar = useCallback((campo: keyof DadosLogin, valor: string) => {
     setDados((prev) => ({ ...prev, [campo]: valor }));
-    if (campo === 'email' && emailError) setEmailError('');
-    if (campo === 'senha' && passwordError) setPasswordError('');
-  };
+    // Limpar erros ao digitar
+    if (campo === 'email') setEmailError('');
+    if (campo === 'senha') setPasswordError('');
+  }, []);
 
-  const validateEmailRealTime = (text: string) => {
-    if (!text) {
-      setEmailError('');
-      return;
-    }
-
-    if (text.includes('@')) {
-      if (!text.endsWith('@gmail.com')) {
-        setEmailError('O domínio de e-mail deve ser @gmail.com');
-      } else {
-        setEmailError('');
-      }
-    } else {
-      if (!MOCK_VALID_USERNAMES.includes(text)) {
-        setEmailError('Usuário inexistente');
-      } else {
-        setEmailError('');
-      }
-    }
-  };
-
-  const isEmailValid = (text: string): boolean => {
-    if (!text) return false;
-    if (text.includes('@')) {
-      return text.endsWith('@gmail.com');
-    } else {
-      return MOCK_VALID_USERNAMES.includes(text);
-    }
-  };
-
-  const handleEmailChange = (text: string) => {
-    atualizar('email', text);
-    validateEmailRealTime(text);
-  };
-
-  const handleLoginPress = () => {
+  // Função de login usando Supabase
+  const handleSignIn = async () => {
     setEmailError('');
     setPasswordError('');
 
-    if (!isEmailValid(dados.email)) {
-      if (!dados.email) {
-        setEmailError('Campo obrigatório');
-      } else {
-        validateEmailRealTime(dados.email);
+    // Validações básicas
+    if (!dados.email.trim()) {
+      setEmailError('Campo obrigatório');
+      return;
+    }
+
+    if (!dados.senha.trim()) {
+      setPasswordError('Campo obrigatório');
+      return;
+    }
+
+    try {
+      setCarregando(true);
+
+      let emailParaLogin = dados.email;
+
+      // Verificar se o input é um email ou username
+      const isEmail = dados.email.includes('@');
+
+      // Se não for email, buscar o email pelo username na tabela users
+      if (!isEmail) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('users')
+          .select('email')
+          .eq('user_name', dados.email)
+          .single();
+
+        if (profileError || !profileData) {
+          setEmailError('Usuário não encontrado');
+          setCarregando(false);
+          return;
+        }
+
+        emailParaLogin = profileData.email;
       }
-      return;
-    }
 
-    if (dados.senha !== MOCK_CORRECT_PASSWORD) {
-      setPasswordError('Senha incorreta');
-      return;
-    }
+      // Login com Supabase Auth usando o email
+      // Isso verifica automaticamente se o email existe e se a senha está correta
+      const { error } = await signIn(emailParaLogin, dados.senha);
 
-    Alert.alert('Sucesso', 'Login realizado com sucesso!');
-    sheetRef.current?.dismiss();
+      if (error) {
+        // Tratar erros específicos do Supabase Auth
+        if (error.message.includes('Invalid login credentials')) {
+          // Senha incorreta ou email não existe
+          if (isEmail) {
+            setEmailError('E-mail ou senha incorretos');
+            setPasswordError('E-mail ou senha incorretos');
+          } else {
+            setPasswordError('Senha incorreta');
+          }
+        } else if (error.message.includes('Email not confirmed')) {
+          setEmailError('Confirme seu e-mail antes de fazer login');
+          Alert.alert('E-mail não confirmado', 'Por favor, confirme seu e-mail antes de fazer login.');
+        } else if (error.message.includes('User not found')) {
+          setEmailError('Usuário não encontrado');
+        } else {
+          // Erro genérico
+          Alert.alert('Erro', error.message);
+        }
+        setCarregando(false);
+        return;
+      }
+
+      // Login bem-sucedido
+      sheetRef.current?.dismiss();
+      navigation.navigate('Home');
+    } catch (err: any) {
+      console.error('Erro no login:', err);
+      Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
+    } finally {
+      setCarregando(false);
+    }
   };
+
+  const handleLoginPress = handleSignIn;
 
   const handleGoogleLoginPress = async () => {
     if (carregando) return;
@@ -162,16 +198,21 @@ const LoginScreen = forwardRef<LoginSheetRef>((_, ref) => {
           <Text style={styles.boasVindas}>Bem-Vindo de Volta</Text>
 
           <CustomInput
+            ref={emailInputRef}
             rotulo="Usuário ou E-mail"
             sugestao="Digite seu usuário ou email"
             valor={dados.email}
-            aoAlterarTexto={handleEmailChange}
+            aoAlterarTexto={(t) => atualizar('email', t)}
             nomeIcone="person-outline"
             tipoTeclado="email-address"
+            erro={!!emailError}
+            tipoRetorno="next"
+            aoEnviar={() => passwordInputRef.current?.focus()}
           />
           {emailError ? <Text style={styles.erro}>{emailError}</Text> : null}
 
           <CustomInput
+            ref={passwordInputRef}
             rotulo="Senha*"
             sugestao="Digite sua senha"
             valor={dados.senha}
@@ -181,19 +222,38 @@ const LoginScreen = forwardRef<LoginSheetRef>((_, ref) => {
             mostrarToggleSenha
             senhaVisivel={mostrarSenha}
             aoAlternarSenha={() => setMostrarSenha((v) => !v)}
+            erro={!!passwordError}
+            tipoRetorno="done"
+            aoEnviar={handleLoginPress}
           />
           {passwordError ? <Text style={styles.erro}>{passwordError}</Text> : null}
 
-          <TouchableOpacity style={{ alignSelf: 'flex-end', marginTop: 8 }}>
+          <TouchableOpacity 
+            style={{ alignSelf: 'flex-end', marginTop: 8 }}
+            onPress={() => {
+              sheetRef.current?.dismiss();
+              setTimeout(() => {
+                abrirEsqueciSenha?.();
+              }, 300);
+            }}
+          >
             <Text style={styles.esqueceuSenha}>Esqueceu a senha?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.loginButton} 
+            style={[
+              styles.loginButton,
+              carregando && styles.loginButtonDisabled
+            ]} 
             onPress={handleLoginPress}
             activeOpacity={0.8}
+            disabled={carregando}
           >
-            <Text style={styles.loginButtonText}>Entrar</Text>
+            {carregando ? (
+              <ActivityIndicator color="#115E4C" />
+            ) : (
+              <Text style={styles.loginButtonText}>Entrar</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.divisor}>
@@ -208,7 +268,15 @@ const LoginScreen = forwardRef<LoginSheetRef>((_, ref) => {
             carregando={carregando}
           />
 
-          <TouchableOpacity style={{ alignItems: 'center', marginTop: 8 }} onPress={() => sheetRef.current?.dismiss()}>
+          <TouchableOpacity 
+            style={{ alignItems: 'center', marginTop: 8 }} 
+            onPress={() => {
+              sheetRef.current?.dismiss();
+              setTimeout(() => {
+                abrirCadastro?.();
+              }, 300);
+            }}
+          >
             <Text style={styles.rodape}>
               Ainda não tem conta? <Text style={styles.link}>Cadastre-se</Text>
             </Text>
@@ -283,6 +351,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     borderColor: '#0E3B34',
+  },
+  loginButtonDisabled: {
+    opacity: 0.5,
   },
   loginButtonText: { 
     color: '#115E4C', 
