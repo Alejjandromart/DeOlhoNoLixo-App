@@ -1,14 +1,15 @@
 import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AuthProvider } from './context/AuthContext';
-import AuthNavigator from './navigation/AuthNavigator';
+import { NavigationContainer } from '@react-navigation/native';
+import { AuthProvider } from './app/context/AuthContext';
+import AuthNavigator from './app/navigation/AuthNavigator';
 import { useFonts } from 'expo-font';
 import { View, ActivityIndicator } from 'react-native';
 
-export default function RootLayout() {
+export default function App() {
   const [fontsLoaded] = useFonts({
-    'Poppins-Bold': require('./assets/fonts/Poppins-Bold.ttf'),
-    'SpaceMono-Regular': require('./assets/fonts/SpaceMono-Regular.ttf'),
+    'Poppins-Bold': require('./app/assets/fonts/Poppins-Bold.ttf'),
+    'SpaceMono-Regular': require('./app/assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   if (!fontsLoaded) {
@@ -22,7 +23,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <AuthNavigator />
+        <NavigationContainer>
+          <AuthNavigator />
+        </NavigationContainer>
       </AuthProvider>
     </GestureHandlerRootView>
   );

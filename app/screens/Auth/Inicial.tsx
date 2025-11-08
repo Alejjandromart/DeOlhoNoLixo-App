@@ -16,6 +16,8 @@ import CadastroScreen from './Cadastro';
 import type { CadastroSheetRef } from './Cadastro';
 import LoginScreen from './Login';
 import type { LoginSheetRef } from './Login';
+import EsqueciSenhaScreen from './EsqueciSenha';
+import type { EsqueciSenhaSheetRef } from './EsqueciSenha';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -38,6 +40,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const cadastroRef = useRef<CadastroSheetRef>(null);
   const loginRef = useRef<LoginSheetRef>(null);
+  const esqueciSenhaRef = useRef<EsqueciSenhaSheetRef>(null);
 
   const handleLoginPress = () => {
     loginRef.current?.abrir();
@@ -45,7 +48,11 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
   const handleRegisterPress = () => {
     cadastroRef.current?.abrir();
-  }
+  };
+
+  const handleEsqueciSenhaPress = () => {
+    esqueciSenhaRef.current?.abrir();
+  };
 
   return (
     <BottomSheetModalProvider>
@@ -102,8 +109,9 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
       </SafeAreaView>
 
       {/* BottomSheets que sobem sobre a tela inicial */}
-      <LoginScreen ref={loginRef} />
-      <CadastroScreen ref={cadastroRef} />
+      <LoginScreen ref={loginRef} abrirCadastro={handleRegisterPress} abrirEsqueciSenha={handleEsqueciSenhaPress} />
+      <CadastroScreen ref={cadastroRef} abrirLogin={handleLoginPress} />
+      <EsqueciSenhaScreen ref={esqueciSenhaRef} voltarParaLogin={handleLoginPress} />
     </BottomSheetModalProvider>
   );
 };
