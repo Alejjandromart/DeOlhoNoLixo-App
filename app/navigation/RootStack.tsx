@@ -7,8 +7,7 @@ import Inicial from '../screens/Auth/Inicial';
 import LoginScreen from '../screens/Auth/Login';
 import Cadastro from '../screens/Auth/Cadastro';
 import TutorialScreen from '../screens/Auth/Tutorial';
-// Implemente posteriormente
-//import RegisterScreen from '../screens/RegisterScreen';
+import HomeScreen from '../screens/Home/HomeScreen';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -18,7 +17,7 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Tutorial: undefined;
-  Home: undefined; // Adicionada rota Home
+  Home: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -32,8 +31,7 @@ const RootStack = () => (
     <Stack.Screen name="Register" component={Cadastro} />
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Tutorial" component={TutorialScreen} />
-    {/*<Stack.Screen name="Register" component={RegisterScreen} />*/}
-    <Stack.Screen name="Home" component={Inicial} />
+    <Stack.Screen name="Home" component={HomeScreen} />
   </Stack.Navigator>
 );
 
