@@ -30,9 +30,17 @@ const HomeScreen: React.FC = () => {
             <Text style={styles.greeting}>Olá! 👋</Text>
             <Text style={styles.userEmail}>{user?.email}</Text>
           </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Configuracao')} 
+              style={styles.settingsButton}
+            >
+              <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Conteúdo Principal */}
@@ -139,6 +147,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#A4D65E',
     fontWeight: '500',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  settingsButton: {
+    backgroundColor: 'rgba(164, 214, 94, 0.2)',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(164, 214, 94, 0.3)',
   },
   logoutButton: {
     backgroundColor: 'rgba(255, 107, 107, 0.2)',

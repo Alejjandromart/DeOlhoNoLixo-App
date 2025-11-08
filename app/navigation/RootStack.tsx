@@ -8,6 +8,10 @@ import LoginScreen from '../screens/Auth/Login';
 import Cadastro from '../screens/Auth/Cadastro';
 import TutorialScreen from '../screens/Auth/Tutorial';
 import HomeScreen from '../screens/Home/HomeScreen';
+import ConfiguracaoScreen from '../screens/Home/ConfiguracaoScreen';
+import ProfileScreen from '../screens/Home/ProfileScreen';
+import AlterarSenhaScreen from '../screens/Home/AlterarSenhaScreen';
+import EsqueciSenha from '../screens/Auth/EsqueciSenha';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -18,6 +22,10 @@ export type RootStackParamList = {
   Register: undefined;
   Tutorial: undefined;
   Home: undefined;
+  Configuracao: undefined;
+  Profile: undefined;
+  AlterarSenha: undefined;
+  EsqueciSenha: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -32,6 +40,10 @@ const RootStack = () => (
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Tutorial" component={TutorialScreen} />
     <Stack.Screen name="Home" component={HomeScreen} />
+    <Stack.Screen name="Configuracao" component={ConfiguracaoScreen} />
+    <Stack.Screen name="Profile" component={ProfileScreen} />
+    <Stack.Screen name="AlterarSenha" component={AlterarSenhaScreen} />
+    <Stack.Screen name="EsqueciSenha" component={EsqueciSenha} />
   </Stack.Navigator>
 );
 
