@@ -148,7 +148,7 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
 
       // Login bem-sucedido
       sheetRef.current?.dismiss();
-      navigation.navigate('Home');
+      navigation.navigate('Feed');
     } catch (err: any) {
       console.error('Erro no login:', err);
       Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
