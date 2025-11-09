@@ -7,7 +7,7 @@ import Inicial from '../screens/Auth/Inicial';
 import LoginScreen from '../screens/Auth/Login';
 import Cadastro from '../screens/Auth/Cadastro';
 import TutorialScreen from '../screens/Auth/Tutorial';
-import HomeScreen from '../screens/Home/HomeScreen';
+import FeedScreen from '../screens/Home/FeedScreen';
 import ConfiguracaoScreen from '../screens/Home/ConfiguracaoScreen';
 import ProfileScreen from '../screens/Home/ProfileScreen';
 import AlterarSenhaScreen from '../screens/Home/AlterarSenhaScreen';
@@ -22,11 +22,12 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Tutorial: undefined;
-  Home: undefined;
+  Feed: undefined;
   Configuracao: undefined;
   Profile: undefined;
   AlterarSenha: undefined;
   EsqueciSenha: undefined;
+  NovaDenuncia: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -55,7 +56,7 @@ const RootStack = () => {
       {user ? (
         // Usuário autenticado - Telas do app
         <>
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Feed" component={FeedScreen} />
           <Stack.Screen name="Configuracao" component={ConfiguracaoScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="AlterarSenha" component={AlterarSenhaScreen} />
