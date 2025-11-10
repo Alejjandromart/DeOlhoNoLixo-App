@@ -31,6 +31,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
@@ -39,3 +40,84 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+// ...existing code...
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual envs
+.venv/
+venv/
+ENV/
+pyenv/
+env/
+
+# IDEs / editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Logs / temp
+*.log
+logs/
+tmp/
+temp/
+
+# Test / cache
+.pytest_cache/
+coverage/
+*.cover
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Build / distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Database / local data
+*.sqlite3
+*.db
+*.db-journal
+
+# ML / YOLO / model artifacts (pesados)
+*.pt
+*.pth
+*.onnx
+*.tflite
+*.ckpt
+*.h5
+*.weights
+weights/
+checkpoints/
+runs/
+**/runs/
+**/cache/
+
+# Dataset folders (imagens / labels) — geralmente não versionar grandes datasets
+**/images/
+**/labels/
+**/data/
+data/
+backend/data/
+backend/**/data/
+backend/trash.v1i.yolov8/yolov8n.pt
+
+# Misc binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.class
+
+# Allowlist note:
+# Se precisar versionar arquivos pequenos (ex: data.yaml ou CSVs), adicione linhas com !<path> para forçar inclusão.
