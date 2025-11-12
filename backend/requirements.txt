@@ -1,0 +1,21 @@
+# Requisitos principais
+ultralytics==8.3.3
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python
+numpy
+pandas
+matplotlib
+Pillow
+
+# Backend (API ou servidor)
+Flask
+flask-cors
+
+# Utilitários
+tqdm
+requests
+PyYAML
+
+# Para compatibilidade com CUDA (GTX 1650)
+--extra-index-url https://download.pytorch.org/whl/cu118
