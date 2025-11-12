@@ -38,12 +38,13 @@ backend/
 git clone https://github.com/seu-usuario/DeOlhoNoLixo-App.git
 cd DeOlhoNoLixo-App/backend
 
-# 2️ Crie um ambiente virtual
+# 2️ Crie um ambiente virtual, OBS: A pasta do venv deve estar dentro da pasta do backend junto a pasta trash.v1i.yolov8
 python -m venv venv
 
 # 3️ Ative o ambiente
 # Windows:
 venv\Scripts\activate
+
 # Linux/Mac:
 source venv/bin/activate
 
