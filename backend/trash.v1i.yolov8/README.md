@@ -10,8 +10,8 @@ O **DeOlho NoLixo** é um projeto que utiliza **Inteligência Artificial (YOLOv8
 - **Ultralytics YOLOv8**
 - **PyTorch**
 - **OpenCV**
-- **Flask / FastAPI (backend)**
-- **React Native (frontend - opcional)**
+- **Flask** (ou **FastAPI**, conforme implementação)
+- **React Native** (frontend - opcional)
 
 ---
 
@@ -26,31 +26,30 @@ backend/
 ├── trash.v1i.yolov8/
 │   ├── images/             
 │   ├── labels/             
-│   └── data.yaml           
+│   ├── data.yaml
+│   └── runs/
+│          └── refined_train/
+│               └── weights/
+│                   └── best.pt   
 │
 └── runs/
-    └── train/
-        └── refined_train/
-            └── weights/
-                └── best.pt   
 
-# 1️⃣ Clone o repositório
+# 1️ Clone o repositório
 git clone https://github.com/seu-usuario/DeOlhoNoLixo-App.git
 cd DeOlhoNoLixo-App/backend
 
-# 2️⃣ Crie um ambiente virtual
+# 2️ Crie um ambiente virtual
 python -m venv venv
 
-# 3️⃣ Ative o ambiente
+# 3️ Ative o ambiente
 # Windows:
 venv\Scripts\activate
-# Linux / Mac:
+# Linux/Mac:
 source venv/bin/activate
 
-# 4️⃣ Instale as dependências
+# 4️ Instale as dependências
 pip install -r requirements.txt
 
-#Para Rodar a IA para detectar objetos, utilize o prompt de comando powershell dentro da pasta trash.v1.yolov8e e use o comando:
+
+# 5 Dentro da Pasta trash.v1i.yolov8 rode o prompt de comando do powershell e utilize o comando:
 python run_inference.py
-
-

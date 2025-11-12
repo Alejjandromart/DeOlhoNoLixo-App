@@ -11,7 +11,7 @@ model_path = "../trash.v1i.yolov8/runs/refined_train/weights/best.pt"
 model = YOLO(model_path)
 
 
-image_path = "ImagemTeste1.jpg"
+image_path = "ImagemTeste5.jpg"
 results = model.predict(source=image_path, device=device, imgsz=640, conf=0.5, save=True)
 
 for r in results:
