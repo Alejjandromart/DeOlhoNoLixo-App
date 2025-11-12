@@ -17,22 +17,26 @@ O **DeOlho NoLixo** é um projeto que utiliza **Inteligência Artificial (YOLOv8
 
 ## ⚙️ Estrutura do Projeto
 
-```bash
-backend/
-│
-├── data.yaml
-├── run_inference.py        
-├── requirements.txt        
-├── trash.v1i.yolov8/
-│   ├── images/             
-│   ├── labels/             
-│   ├── data.yaml
-│   └── runs/
-│          └── refined_train/
-│               └── weights/
-│                   └── best.pt   
-│
-└── runs/
+* backend
+    * data
+    * ai
+        * trash.v1.yolov8
+            * runs
+                * refined_train
+                    * weights
+                        * best.pt
+                * train
+                * test
+                * train
+                * valid
+                * data.yaml
+            * README.md
+            * run_inference.py
+            * train.py
+            * yolov8n.pt
+    * venv
+    * requirements.txt
+    * runs
 
 # 1️ Clone o repositório
 git clone https://github.com/seu-usuario/DeOlhoNoLixo-App.git
