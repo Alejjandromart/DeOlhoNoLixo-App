@@ -7,8 +7,14 @@ import Inicial from '../screens/Auth/Inicial';
 import LoginScreen from '../screens/Auth/Login';
 import Cadastro from '../screens/Auth/Cadastro';
 import TutorialScreen from '../screens/Auth/Tutorial';
-import HomeScreen from '../screens/Home/HomeScreen';
+import FeedScreen from '../screens/Home/FeedScreen';
+import ConfiguracaoScreen from '../screens/Home/ConfiguracaoScreen';
+import ProfileScreen from '../screens/Home/ProfileScreen';
+import AlterarSenhaScreen from '../screens/Home/AlterarSenhaScreen';
+import EsqueciSenha from '../screens/Auth/EsqueciSenha';
+import RealizarDenuncia from '../screens/Denuncia/RealizarDenuncia';
 import { useAuth } from '../context/AuthContext';
+import { DenunciaProvider } from '../context/DenunciaContext';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -18,7 +24,12 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Tutorial: undefined;
-  Home: undefined;
+  Feed: undefined;
+  Configuracao: undefined;
+  Profile: undefined;
+  AlterarSenha: undefined;
+  EsqueciSenha: undefined;
+  RealizarDenuncia: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -41,27 +52,35 @@ const RootStack = () => {
   }
 
   return (
-    <Stack.Navigator 
-      screenOptions={{ headerShown: false }}
-    >
-      {user ? (
-        // Usuário autenticado - Telas do app
-        <>
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Tutorial" component={TutorialScreen} />
-        </>
-      ) : (
-        // Usuário não autenticado - Telas de auth
-        <>
-          <Stack.Screen name="Splash" component={Splash} />
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-          <Stack.Screen name="Welcome" component={Inicial} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Cadastro" component={Cadastro} />
-          <Stack.Screen name="Register" component={Cadastro} />
-        </>
-      )}
-    </Stack.Navigator>
+    <DenunciaProvider>
+      <Stack.Navigator 
+        screenOptions={{ headerShown: false }}
+      >
+        {user ? (
+          // Usuário autenticado - Telas do app
+          <>
+            <Stack.Screen name="Feed" component={FeedScreen} />
+            <Stack.Screen name="Configuracao" component={ConfiguracaoScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="AlterarSenha" component={AlterarSenhaScreen} />
+            <Stack.Screen name="EsqueciSenha" component={EsqueciSenha} />
+            <Stack.Screen name="Tutorial" component={TutorialScreen} />
+            <Stack.Screen name="RealizarDenuncia" component={RealizarDenuncia} />
+          </>
+        ) : (
+          // Usuário não autenticado - Telas de auth
+          <>
+            <Stack.Screen name="Splash" component={Splash} />
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+            <Stack.Screen name="Welcome" component={Inicial} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Cadastro" component={Cadastro} />
+            <Stack.Screen name="Register" component={Cadastro} />
+            <Stack.Screen name="EsqueciSenha" component={EsqueciSenha} />
+          </>
+        )}
+      </Stack.Navigator>
+    </DenunciaProvider>
   );
 };
 
