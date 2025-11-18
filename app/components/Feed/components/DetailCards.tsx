@@ -37,7 +37,6 @@ const styles = StyleSheet.create({
   detailCards: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
   },
   detailCard: {
     flex: 1,

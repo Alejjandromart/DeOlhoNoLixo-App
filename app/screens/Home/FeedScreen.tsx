@@ -3,15 +3,19 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Share,
+  Alert,
+  Modal,
+  Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useDenuncias } from '../../context/DenunciaContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import BottomTabBar from '../../components/BottomTabBar';
 import DenunciaCard from '../../components/Feed/DenunciaCard';
 
@@ -19,8 +23,9 @@ const FeedScreen: React.FC = () => {
   const { user, signOut } = useAuth();
   const denunciaContext = useDenuncias();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const [refreshing, setRefreshing] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(!route.params?.showFeed);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [filterOption, setFilterOption] = useState<'recente' | 'proximo'>('recente');
 
@@ -50,6 +55,28 @@ const FeedScreen: React.FC = () => {
     console.log('✅ adicionarComentario chamado');
   };
 
+  const handleShare = async (denuncia: any) => {
+    try {
+      const result = await Share.share({
+        message: `Denúncia: ${denuncia.descricao}\n\nLocalização: ${denuncia.localizacao}\nStatus: ${denuncia.status}\n\nVia DeOlhoNoLixo App`,
+        title: 'Compartilhar Denúncia',
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          console.log('Compartilhado via:', result.activityType);
+        } else {
+          console.log('Compartilhado com sucesso');
+        }
+      } else if (result.action === Share.dismissedAction) {
+        console.log('Compartilhamento cancelado');
+      }
+    } catch (error: any) {
+      Alert.alert('Erro', 'Não foi possível compartilhar a denúncia.');
+      console.error('Erro ao compartilhar:', error);
+    }
+  };
+
   const handleLogout = async () => {
     await signOut();
     navigation.navigate('Welcome');
@@ -68,27 +95,43 @@ const FeedScreen: React.FC = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: showWelcome ? '#0A7D6F' : '#F5F5F5' }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Olá! 👋</Text>
-          <Text style={styles.userEmail}>{user?.email}</Text>
-        </View>
-          <View style={styles.headerButtons}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: showWelcome ? '#0A7D6F' : '#F5F5F5' }} edges={['top']}>
+      <View style={styles.container}>
+        {/* Header */}
+        {!showWelcome ? (
+          <View style={styles.feedHeaderTop}>
+            <View style={{ width: 52 }} />
+            <View style={styles.titleContainer}>
+              <Text style={styles.titleDeOlho}>DeOlho</Text>
+              <Text style={styles.titleNoLixo}>NoLixo</Text>
+            </View>
             <TouchableOpacity 
-              onPress={() => navigation.navigate('Configuracao')} 
-              style={styles.settingsButton}
+              onPress={() => setShowFilterMenu(!showFilterMenu)} 
+              style={styles.filterButtonTop}
             >
-              <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-              <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+              <Ionicons name="options-outline" size={28} color="#333" />
             </TouchableOpacity>
           </View>
-        </View>
+        ) : (
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.greeting}>Olá! 👋</Text>
+              <Text style={styles.userEmail}>{user?.email}</Text>
+            </View>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('Configuracao')} 
+                style={styles.settingsButton}
+              >
+                <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+                <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
-      <SafeAreaView style={styles.safeArea}>
         {/* Conteúdo */}
         <ScrollView 
           style={[styles.content, showWelcome && styles.contentWelcome]}
@@ -157,50 +200,6 @@ const FeedScreen: React.FC = () => {
           ) : (
             /* Feed de Denúncias */
             <View style={styles.feedSection}>
-              <View style={styles.feedHeader}>
-                <TouchableOpacity onPress={() => setShowWelcome(true)} style={styles.backButton}>
-                  <Ionicons name="arrow-back" size={24} color="#333" />
-                </TouchableOpacity>
-                <Text style={styles.sectionTitle}>Feed de Denúncias</Text>
-                <TouchableOpacity 
-                  onPress={() => setShowFilterMenu(!showFilterMenu)} 
-                  style={styles.filterButton}
-                >
-                  <Ionicons name="options-outline" size={24} color="#333" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Menu de Filtro */}
-              {showFilterMenu && (
-                <View style={styles.filterMenu}>
-                  <TouchableOpacity 
-                    style={[styles.filterOption, filterOption === 'recente' && styles.filterOptionActive]}
-                    onPress={() => handleFilterSelect('recente')}
-                  >
-                    <Ionicons 
-                      name="time-outline" 
-                      size={20} 
-                      color={filterOption === 'recente' ? '#0A7D6F' : '#666'} 
-                    />
-                    <Text style={[styles.filterText, filterOption === 'recente' && styles.filterTextActive]}>
-                      Mais Recente
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.filterOption, filterOption === 'proximo' && styles.filterOptionActive]}
-                    onPress={() => handleFilterSelect('proximo')}
-                  >
-                    <Ionicons 
-                      name="map-outline" 
-                      size={20} 
-                      color={filterOption === 'proximo' ? '#0A7D6F' : '#666'} 
-                    />
-                    <Text style={[styles.filterText, filterOption === 'proximo' && styles.filterTextActive]}>
-                      Mais Próximo
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
 
               
               {denuncias.length === 0 ? (
@@ -230,8 +229,7 @@ const FeedScreen: React.FC = () => {
                       comentarios={denuncia.comentarios}
                       onLike={() => curtirDenuncia(denuncia.id)}
                       onComment={() => console.log('Comentar', denuncia.id)}
-                      onShare={() => console.log('Compartilhar', denuncia.id)}
-                      onBookmark={() => console.log('Salvar', denuncia.id)}
+                      onShare={() => handleShare(denuncia)}
                       onAddComment={(texto) => handleAddComment(denuncia.id, texto)}
                     />
                   ))}
@@ -240,16 +238,65 @@ const FeedScreen: React.FC = () => {
             </View>
           )}
         </ScrollView>
-      </SafeAreaView>
-      <BottomTabBar currentRoute="Feed" />
-    </View>
+
+      {/* Modal de Filtro */}
+      <Modal
+        visible={showFilterMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFilterMenu(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowFilterMenu(false)}
+        >
+          <View style={styles.filterModalContent}>
+            <TouchableOpacity 
+              style={[styles.filterModalOption, filterOption === 'recente' && styles.filterModalOptionActive]}
+              onPress={() => handleFilterSelect('recente')}
+            >
+              <Ionicons 
+                name="time-outline" 
+                size={24} 
+                color={filterOption === 'recente' ? '#FFFFFF' : '#333'} 
+              />
+              <Text style={[styles.filterModalText, filterOption === 'recente' && styles.filterModalTextActive]}>
+                Mais Recente
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={styles.filterDivider} />
+            
+            <TouchableOpacity 
+              style={[styles.filterModalOption, filterOption === 'proximo' && styles.filterModalOptionActive]}
+              onPress={() => handleFilterSelect('proximo')}
+            >
+              <Ionicons 
+                name="map-outline" 
+                size={24} 
+                color={filterOption === 'proximo' ? '#FFFFFF' : '#333'} 
+              />
+              <Text style={[styles.filterModalText, filterOption === 'proximo' && styles.filterModalTextActive]}>
+                Mais Próximo
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <BottomTabBar 
+        currentRoute="Feed" 
+        onHomePress={() => setShowWelcome(true)}
+      />
+      </View>
+    </SafeAreaView>
   );
 };
 
 export default FeedScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
   },
   header: {
@@ -257,9 +304,46 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 20,
     paddingBottom: 16,
     backgroundColor: '#0A7D6F',
+  },
+  feedHeaderTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 16,
+    backgroundColor: '#F5F5F5',
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    justifyContent: 'center',
+  },
+  titleDeOlho: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#0A7D6F',
+  },
+  titleNoLixo: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  filterButtonTop: {
+    padding: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   greeting: {
     fontSize: 24,
@@ -362,62 +446,48 @@ const styles = StyleSheet.create({
   feedSection: {
     marginBottom: 24,
   },
-  feedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    gap: 12,
-  },
-  backButton: {
-    padding: 8,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 95,
+    paddingRight: 20,
   },
-  filterButton: {
+  filterModalContent: {
+    backgroundColor: 'rgba(64, 64, 64, 0.95)',
+    borderRadius: 16,
     padding: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    minWidth: 220,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  filterMenu: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 12,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  filterOption: {
+  filterModalOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    gap: 12,
+    padding: 16,
+    gap: 16,
+    borderRadius: 12,
   },
-  filterOptionActive: {
-    backgroundColor: '#E8F5E9',
+  filterModalOptionActive: {
+    backgroundColor: 'rgba(10, 125, 111, 0.8)',
   },
-  filterText: {
-    fontSize: 15,
-    color: '#666',
+  filterModalText: {
+    fontSize: 16,
+    color: '#FFFFFF',
     fontWeight: '500',
   },
-  filterTextActive: {
-    color: '#0A7D6F',
+  filterModalTextActive: {
+    color: '#FFFFFF',
     fontWeight: '600',
+  },
+  filterDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginVertical: 4,
   },
   feedCards: {
     gap: 0,

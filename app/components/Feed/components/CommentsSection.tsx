@@ -44,7 +44,6 @@ export default function CommentsSection({ comentarios }: CommentsSectionProps) {
 
 const styles = StyleSheet.create({
   commentsContainer: {
-    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,

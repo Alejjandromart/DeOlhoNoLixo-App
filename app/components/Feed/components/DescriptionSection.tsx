@@ -16,7 +16,6 @@ export default function DescriptionSection({ descricao }: DescriptionSectionProp
 
 const styles = StyleSheet.create({
   descriptionContainer: {
-    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,

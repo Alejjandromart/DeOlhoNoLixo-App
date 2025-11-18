@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Modal, PanResponder, Animated } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   ExpandedUserInfo,
@@ -27,7 +27,6 @@ interface DenunciaCardProps {
   onLike?: () => void;
   onComment?: () => void;
   onShare?: () => void;
-  onBookmark?: () => void;
   likes?: number;
   isLiked?: boolean;
   tipos?: string[];
@@ -47,7 +46,6 @@ export default function DenunciaCard({
   onLike,
   onComment,
   onShare,
-  onBookmark,
   likes = 0,
   isLiked = false,
   tipos = [],
@@ -57,6 +55,39 @@ export default function DenunciaCard({
   onAddComment,
 }: DenunciaCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100) {
+          Animated.timing(translateY, {
+            toValue: 500,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            handleCloseComments();
+            translateY.setValue(0);
+          });
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   const handleCardPress = () => {
     setExpanded(true);
@@ -64,6 +95,14 @@ export default function DenunciaCard({
 
   const handleCloseExpanded = () => {
     setExpanded(false);
+  };
+
+  const handleCommentsPress = () => {
+    setShowComments(true);
+  };
+
+  const handleCloseComments = () => {
+    setShowComments(false);
   };
 
   return (
@@ -130,18 +169,13 @@ export default function DenunciaCard({
           {likes > 0 && <Text style={styles.actionText}>{likes}</Text>}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => { handleCardPress(); onComment?.(); }}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleCommentsPress}>
           <Ionicons name="chatbubble-outline" size={20} color="#666" />
+          {comentarios.length > 0 && <Text style={styles.actionText}>{comentarios.length}</Text>}
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={onShare}>
-          <Ionicons name="share-outline" size={20} color="#666" />
-        </TouchableOpacity>
-
-        <View style={styles.spacer} />
-
-        <TouchableOpacity style={styles.actionButton} onPress={onBookmark}>
-          <Ionicons name="bookmark-outline" size={20} color="#666" />
+          <Ionicons name="share-social-outline" size={20} color="#666" />
         </TouchableOpacity>
       </View>
         </View>
@@ -155,13 +189,16 @@ export default function DenunciaCard({
         onRequestClose={handleCloseExpanded}
       >
         <View style={styles.expandedContainer}>
-          {/* Header do Modal */}
-          <View style={styles.expandedHeader}>
-            <TouchableOpacity onPress={handleCloseExpanded} style={styles.closeButton}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          {/* Header fixo com título e botão de voltar */}
+          <View style={styles.headerContainer}>
+            <TouchableOpacity onPress={handleCloseExpanded} style={styles.backButtonHeader}>
+              <Ionicons name="arrow-back" size={24} color="#666" />
             </TouchableOpacity>
-            <Text style={styles.expandedTitle}>DeOlhoNoLixo</Text>
-            <View style={{ width: 24 }} />
+            <View style={styles.titleContainer}>
+              <Text style={styles.titleDeOlho}>DeOlho</Text>
+              <Text style={styles.titleNoLixo}>NoLixo</Text>
+            </View>
+            <View style={{ width: 40 }} />
           </View>
 
           <ScrollView 
@@ -174,8 +211,33 @@ export default function DenunciaCard({
             <ImageCarousel imagens={imagens} />
 
             <View style={styles.expandedBody}>
+              {/* Ações logo abaixo da imagem */}
+              <View style={styles.actionsRow}>
+                <TouchableOpacity style={styles.actionBtn} onPress={onLike}>
+                  <Ionicons
+                    name={isLiked ? 'heart' : 'heart-outline'}
+                    size={26}
+                    color={isLiked ? '#FF3B30' : '#333'}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtn} onPress={onShare}>
+                  <Ionicons name="share-social-outline" size={26} color="#333" />
+                </TouchableOpacity>
+                <View style={styles.actionSpacer} />
+                <View style={styles.viewsContainer}>
+                  <Ionicons name="eye-outline" size={22} color="#666" />
+                  <Text style={styles.viewsText}>{likes}</Text>
+                </View>
+              </View>
+
+              {/* Barra divisória */}
+              <View style={styles.divider} />
+
               {/* Info do Usuário */}
               <ExpandedUserInfo usuario={usuario} tempoAtras={tempoAtras} />
+
+              {/* Barra divisória */}
+              <View style={styles.divider} />
 
               {/* Informações de Localização e Status */}
               <InfoSection
@@ -188,17 +250,23 @@ export default function DenunciaCard({
               {/* Tags de Tipos de Lixo */}
               <TagsList tipos={tipos} />
 
+              {/* Barra divisória */}
+              <View style={styles.divider} />
+
               {/* Descrição Completa */}
               <DescriptionSection descricao={descricao} />
+
+              {/* Barra divisória */}
+              <View style={styles.divider} />
 
               {/* Cards de Detalhes */}
               <DetailCards tipos={tipos} tempoAtras={tempoAtras} />
 
+              {/* Barra divisória */}
+              <View style={styles.divider} />
+
               {/* Seção de Comentários */}
               <CommentsSection comentarios={comentarios} />
-
-              {/* Botões de Ação */}
-              <ExpandedActions likes={likes} isLiked={isLiked} onLikePress={onLike || (() => {})} />
             </View>
           </ScrollView>
 
@@ -214,6 +282,81 @@ export default function DenunciaCard({
             }} 
           />
         </View>
+      </Modal>
+
+      {/* Modal de Comentários */}
+      <Modal
+        visible={showComments}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseComments}
+      >
+        <TouchableOpacity 
+          style={styles.commentsModalOverlay}
+          activeOpacity={1}
+          onPress={handleCloseComments}
+        >
+          <Animated.View 
+            style={[
+              styles.commentsModalContainer,
+              {
+                transform: [{ translateY }],
+              },
+            ]}
+          >
+            <TouchableOpacity activeOpacity={1}>
+            {/* Indicador de arrastar */}
+            <View style={styles.dragIndicatorContainer} {...panResponder.panHandlers}>
+              <View style={styles.dragIndicator} />
+            </View>
+
+            {/* Lista de Comentários */}
+            <ScrollView 
+              style={styles.commentsModalScroll}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {comentarios.length === 0 ? (
+                <View style={styles.emptyCommentsContainer}>
+                  <Ionicons name="chatbubble-outline" size={48} color="#CCC" />
+                  <Text style={styles.emptyCommentsText}>Nenhum comentário ainda</Text>
+                  <Text style={styles.emptyCommentsSubtext}>Seja o primeiro a comentar!</Text>
+                </View>
+              ) : (
+                comentarios.map((comentario, index) => (
+                  <View key={index} style={styles.commentItem}>
+                    <View style={styles.commentAvatar}>
+                      {comentario.usuario.avatar ? (
+                        <Image source={{ uri: comentario.usuario.avatar }} style={styles.commentAvatarImage} />
+                      ) : (
+                        <Ionicons name="person" size={20} color="#666" />
+                      )}
+                    </View>
+                    <View style={styles.commentContent}>
+                      <View style={styles.commentHeader}>
+                        <Text style={styles.commentUserName}>{comentario.usuario.nome}</Text>
+                        <Text style={styles.commentTime}>{comentario.tempoAtras}</Text>
+                      </View>
+                      <Text style={styles.commentText}>{comentario.texto}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            {/* Input de Comentário */}
+            <View style={styles.commentsModalInputContainer}>
+              <CommentInput 
+                onAddComment={(texto) => {
+                  if (onAddComment) {
+                    onAddComment(texto);
+                  }
+                }} 
+              />
+            </View>
+            </TouchableOpacity>
+          </Animated.View>
+        </TouchableOpacity>
       </Modal>
     </>
   );
@@ -368,30 +511,182 @@ const styles = StyleSheet.create({
   // Estilos do Modal Expandido
   expandedContainer: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFFFFF',
   },
-  expandedHeader: {
+  headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0A7D6F',
-    paddingHorizontal: 12,
-    paddingTop: 20,
-    paddingBottom: 14,
-    minHeight: 70,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  closeButton: {
-    padding: 4,
+  backButtonHeader: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  expandedTitle: {
-    fontSize: 20,
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    justifyContent: 'center',
+  },
+  titleDeOlho: {
+    fontSize: 28,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#0A7D6F',
+  },
+  titleNoLixo: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#000000',
   },
   expandedContent: {
     flex: 1,
   },
   expandedBody: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  actionBtn: {
+    padding: 8,
+    marginRight: 16,
+  },
+  actionSpacer: {
+    flex: 1,
+  },
+  viewsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  viewsText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginVertical: 16,
+  },
+  // Estilos do Modal de Comentários
+  commentsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  commentsModalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingBottom: 0,
+  },
+  dragIndicatorContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#DDD',
+    borderRadius: 2,
+  },
+  commentsModalHeader: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  commentsModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  commentsModalScroll: {
+    maxHeight: 400,
+    paddingHorizontal: 20,
+  },
+  emptyCommentsContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyCommentsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+  },
+  emptyCommentsSubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E8E8E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  commentAvatarImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  commentContent: {
+    flex: 1,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  commentUserName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  commentTime: {
+    fontSize: 12,
+    color: '#999',
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  commentsModalInputContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
   },
 });

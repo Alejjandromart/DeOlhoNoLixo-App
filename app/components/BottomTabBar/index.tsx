@@ -9,9 +9,10 @@ import { COLORS } from './colors';
 
 interface BottomTabBarProps {
   currentRoute?: string;
+  onHomePress?: () => void;
 }
 
-const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentRoute = 'Feed' }) => {
+const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentRoute = 'Feed', onHomePress }) => {
   const navigation = useNavigation<any>();
   
   // Animações de escala para os botões
@@ -108,7 +109,24 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentRoute = 'Feed' }) =>
           iconOutline="home-outline"
           label="Home"
           scaleAnim={homeScale}
-          onPress={() => animateTab(homeScale, 'Feed')}
+          onPress={() => {
+            Animated.sequence([
+              Animated.timing(homeScale, {
+                toValue: 0.85,
+                duration: 100,
+                useNativeDriver: true,
+              }),
+              Animated.spring(homeScale, {
+                toValue: 1,
+                friction: 3,
+                useNativeDriver: true,
+              }),
+            ]).start(() => {
+              if (onHomePress) {
+                onHomePress();
+              }
+            });
+          }}
           onLayout={handleFeedLayout}
           colors={COLORS}
         />

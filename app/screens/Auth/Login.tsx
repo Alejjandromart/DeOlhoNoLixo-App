@@ -148,7 +148,8 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
 
       // Login bem-sucedido
       sheetRef.current?.dismiss();
-      navigation.navigate('Feed');
+      // A navegação acontece automaticamente quando o usuário é autenticado
+      // O AuthNavigator vai mudar para as telas autenticadas
     } catch (err: any) {
       console.error('Erro no login:', err);
       Alert.alert('Erro', 'Falha inesperada. Tente novamente.');

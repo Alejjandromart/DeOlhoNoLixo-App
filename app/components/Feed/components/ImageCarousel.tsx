@@ -19,17 +19,20 @@ export default function ImageCarousel({ imagens, onIndexChange }: ImageCarouselP
   };
 
   return (
-    <View>
+    <View style={styles.container}>
       <ScrollView
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         style={styles.carousel}
+        contentContainerStyle={styles.carouselContent}
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
         {imagens.map((uri, index) => (
-          <Image key={index} source={{ uri }} style={styles.image} />
+          <View key={index} style={styles.imageWrapper}>
+            <Image source={{ uri }} style={styles.image} />
+          </View>
         ))}
       </ScrollView>
 
@@ -52,14 +55,27 @@ export default function ImageCarousel({ imagens, onIndexChange }: ImageCarouselP
 }
 
 const styles = StyleSheet.create({
+  container: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+  },
   carousel: {
+    height: 300,
+  },
+  carouselContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  imageWrapper: {
+    width: SCREEN_WIDTH - 32,
     height: 280,
-    backgroundColor: '#000',
+    marginRight: 12,
   },
   image: {
-    width: SCREEN_WIDTH,
-    height: 280,
-    resizeMode: 'contain',
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    resizeMode: 'cover',
   },
   pagination: {
     flexDirection: 'row',
@@ -76,12 +92,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   paginationDotActive: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0A7D6F',
   },
 });

@@ -125,6 +125,15 @@ export default function RealizarDenuncia() {
     }
   };
 
+  // Definir localização manual
+  const setLocalizacaoManual = (endereco: string) => {
+    setLocalizacao({
+      latitude: 0,
+      longitude: 0,
+      endereco: endereco,
+    });
+  };
+
   // Adicionar imagem da câmera
   const tirarFoto = async () => {
     try {
@@ -302,7 +311,7 @@ export default function RealizarDenuncia() {
         [
           {
             text: 'OK',
-            onPress: () => navigation.goBack(),
+            onPress: () => navigation.navigate('Feed', { showFeed: true }),
           },
         ]
       );
@@ -349,6 +358,7 @@ export default function RealizarDenuncia() {
           localizacao={localizacao}
           obtendoLocalizacao={obtendoLocalizacao}
           onObterLocalizacao={obterLocalizacaoAtual}
+          onSetLocalizacaoManual={setLocalizacaoManual}
         />
 
         <DescriptionInput
