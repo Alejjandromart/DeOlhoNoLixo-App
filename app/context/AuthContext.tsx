@@ -1,76 +1,130 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { supabase } from '../lib/supabase';
-import { Session, User } from '@supabase/supabase-js';
+import { auth } from '../lib/firebase';
+import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+// import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 interface AuthContextData {
   user: User | null;
-  session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>;
+  signUp: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar sessão existente ao iniciar o app
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('📱 Sessão recuperada:', session ? `Usuário: ${session.user.email}` : 'Sem sessão');
-      setSession(session);
-      setUser(session?.user ?? null);
+    console.log("🔄 Auth provider mounting...");
+
+    // Configure Google Sign-In
+    /* GoogleSignin.configure({
+      webClientId: '27306055437-f16dqr5ibt1i3hkjpp8ou6jc9i7adpud.apps.googleusercontent.com',
+      scopes: ['profile', 'email'],
+      offlineAccess: true,
+    }); */
+
+    let hasInitialized = false;
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log('� Auth state changed - User:', user ? user.email : 'Sem usuário');
+      hasInitialized = true;
+      setUser(user);
+      setLoading(false);
+    }, (error) => {
+      console.error("❌ Auth state change error:", error);
+      hasInitialized = true;
       setLoading(false);
     });
 
-    // Escutar mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('🔄 Evento de auth:', _event);
-      console.log('👤 Sessão atual:', session ? `Usuário: ${session.user.email}` : 'Sem sessão');
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Safety timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.warn("⏰ Auth timeout reached");
+      if (!hasInitialized) {
+        console.warn("⚠️ Auth loading timed out - forcing app entry");
+        setLoading(false);
+      }
+    }, 3000);
 
-    return () => subscription.unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      return { error: null };
+    } catch (error: any) {
+      return { error };
+    }
   };
 
-  const signUp = async (email: string, password: string, metadata?: any) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: metadata,
-      },
-    });
-    return { error };
+  const signUp = async (email: string, password: string) => {
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      return { error: null };
+    } catch (error: any) {
+      return { error };
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    /* try {
+      console.log("🚀 Iniciando Google Sign-In...");
+      // Check if your device supports Google Play
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+      // Get the users ID token
+      const response = await GoogleSignin.signIn();
+      console.log("📦 Resposta do Google:", JSON.stringify(response, null, 2));
+
+      const idToken = response.data?.idToken;
+
+      if (!idToken) {
+        console.error("❌ ID Token não encontrado na resposta:", response);
+        throw new Error('No ID token found');
+      }
+
+      console.log("✅ ID Token recebido, autenticando no Firebase...");
+
+      // Create a Google credential with the token
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+
+      // Sign-in the user with the credential
+      await signInWithCredential(auth, googleCredential);
+
+      return { error: null };
+    } catch (error: any) {
+      console.error("Google Sign-In Error:", error);
+      return { error };
+    } */
+    return { error: new Error('Google Sign-In temporarily disabled') };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    /* try {
+      await GoogleSignin.signOut();
+    } catch (error) {
+      console.error("Error signing out of Google:", error);
+    } */
+    await firebaseSignOut(auth);
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        session,
         loading,
         signIn,
         signUp,
         signOut,
+        signInWithGoogle,
       }}
     >
       {children}

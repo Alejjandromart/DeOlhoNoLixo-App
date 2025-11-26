@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 interface ImagemSelecionada {
@@ -13,6 +13,10 @@ interface ImagePickerProps {
   onAdicionarImagem: () => void;
   onRemoverImagem: (index: number) => void;
 }
+
+const { width } = Dimensions.get('window');
+const COLUMN_GAP = 12;
+const ITEM_WIDTH = (width - 40 - COLUMN_GAP) / 2; // 40 is padding (20 left + 20 right)
 
 export default function ImagePickerComponent({ imagens, onAdicionarImagem, onRemoverImagem }: ImagePickerProps) {
   const [confirmIndex, setConfirmIndex] = useState<number | null>(null);
@@ -30,42 +34,35 @@ export default function ImagePickerComponent({ imagens, onAdicionarImagem, onRem
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.botaoAdicionar}
-        onPress={onAdicionarImagem}
-        disabled={imagens.length >= 4}
-      >
-        <Ionicons name="camera-outline" size={20} color="#FFFFFF" />
-        <Text style={styles.textoBotao}>Adicionar Imagem</Text>
-      </TouchableOpacity>
-
-      {imagens.length > 0 && (
-        <View style={styles.gridImagens}>
-          {imagens.map((imagem, index) => (
-            <View key={index} style={styles.imagemContainer}>
-              <Image source={{ uri: imagem.uri }} style={styles.imagem} />
-              <TouchableOpacity
-                style={styles.botaoRemover}
-                onPress={() => handleRemoverImagem(index)}
-              >
-                <Ionicons name="close-circle" size={24} color="#FF3B30" />
-              </TouchableOpacity>
-            </View>
-          ))}
-          {imagens.length < 4 && (
+      <View style={styles.grid}>
+        {imagens.map((imagem, index) => (
+          <View key={index} style={styles.itemContainer}>
+            <Image source={{ uri: imagem.uri }} style={styles.imagem} />
             <TouchableOpacity
-              style={styles.imagemPlaceholder}
-              onPress={onAdicionarImagem}
+              style={styles.botaoRemover}
+              onPress={() => handleRemoverImagem(index)}
             >
-              <Ionicons name="add-outline" size={32} color="#999" />
+              <View style={styles.botaoRemoverBg}>
+                <Ionicons name="close" size={16} color="#FFFFFF" />
+              </View>
             </TouchableOpacity>
-          )}
-        </View>
-      )}
+          </View>
+        ))}
 
-      {/* Confirm remove modal (inline simple modal using CustomModal) */}
+        {imagens.length < 4 && (
+          <TouchableOpacity
+            style={[styles.itemContainer, styles.botaoAdicionar]}
+            onPress={onAdicionarImagem}
+          >
+            <Ionicons name="camera-outline" size={32} color="#10B981" />
+            <Text style={styles.textoAdicionar}>Adicionar</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Confirm remove modal */}
       {confirmIndex !== null && (
-        <View style={confirmStyles.container} pointerEvents="box-none">
+        <View style={confirmStyles.overlay}>
           <View style={confirmStyles.modal}>
             <Text style={confirmStyles.title}>Remover Imagem</Text>
             <Text style={confirmStyles.message}>Deseja remover esta imagem?</Text>
@@ -86,99 +83,88 @@ export default function ImagePickerComponent({ imagens, onAdicionarImagem, onRem
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  botaoAdicionar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0A7D6F',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
     marginBottom: 12,
   },
-  textoBotao: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  gridImagens: {
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: COLUMN_GAP,
   },
-  imagemContainer: {
-    width: '48%',
-    aspectRatio: 1.5,
-    position: 'relative',
-    borderRadius: 8,
+  itemContainer: {
+    width: ITEM_WIDTH,
+    height: ITEM_WIDTH * 0.75,
+    borderRadius: 16,
     overflow: 'hidden',
+    position: 'relative',
   },
   imagem: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
+    resizeMode: 'cover',
+  },
+  botaoAdicionar: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#10B981',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  textoAdicionar: {
+    marginTop: 8,
+    color: '#10B981',
+    fontWeight: '600',
+    fontSize: 14,
   },
   botaoRemover: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
+    top: 8,
+    right: 8,
   },
-  imagemPlaceholder: {
-    width: '48%',
-    aspectRatio: 1.5,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    borderStyle: 'dashed',
+  botaoRemoverBg: {
+    backgroundColor: 'rgba(239, 68, 68, 0.9)', // Red
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
 });
 
 const confirmStyles = StyleSheet.create({
-  container: {
+  overlay: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
+    left: -20, // Compensate for parent padding
+    right: -20,
+    top: -100, // Cover enough area
+    bottom: -100,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1000,
+    height: Dimensions.get('window').height,
   },
   modal: {
-    width: '84%',
+    width: '80%',
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 20,
+    padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
+    color: '#1F2937',
   },
   message: {
-    fontSize: 14,
-    color: '#444',
-    marginBottom: 12,
+    fontSize: 15,
+    color: '#4B5563',
+    marginBottom: 20,
   },
   actions: {
     flexDirection: 'row',
@@ -186,17 +172,17 @@ const confirmStyles = StyleSheet.create({
     gap: 12,
   },
   cancelButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     backgroundColor: '#F3F4F6',
   },
   confirmButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#0A7D6F',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: '#EF4444',
   },
-  cancelText: { color: '#333', fontWeight: '600' },
-  confirmText: { color: '#fff', fontWeight: '700' },
+  cancelText: { color: '#374151', fontWeight: '600' },
+  confirmText: { color: '#fff', fontWeight: '600' },
 });

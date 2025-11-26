@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface CommentInputProps {
   onAddComment: (texto: string) => void;
@@ -8,6 +9,7 @@ interface CommentInputProps {
 
 export default function CommentInput({ onAddComment }: CommentInputProps) {
   const [novoComentario, setNovoComentario] = useState('');
+  const insets = useSafeAreaInsets();
 
   const handleEnviarComentario = () => {
     console.log('📝 Tentando enviar comentário:', novoComentario);
@@ -26,7 +28,7 @@ export default function CommentInput({ onAddComment }: CommentInputProps) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.inputAvatar}>
           <Ionicons name="person-circle" size={32} color="#999" />
         </View>

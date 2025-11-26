@@ -9,44 +9,53 @@ interface TrashTypeSelectorProps {
   onAdicionarTipo: () => void;
 }
 
-const TIPOS_PADRAO = ['Doméstico', 'Hospitalar'];
+const TIPOS_PADRAO = ['Doméstico', 'Hospitalar', 'Entulho', 'Eletrônico'];
 
-export default function TrashTypeSelector({ 
-  tiposSelecionados, 
+export default function TrashTypeSelector({
+  tiposSelecionados,
   tiposCustomizados,
   onToggleTipo,
-  onAdicionarTipo 
+  onAdicionarTipo
 }: TrashTypeSelectorProps) {
-  const todosTipos = [...TIPOS_PADRAO, ...tiposCustomizados];
+  // Filter out duplicates if any
+  const todosTipos = Array.from(new Set([...TIPOS_PADRAO, ...tiposCustomizados]));
 
   return (
     <View style={styles.container}>
       <View style={styles.tiposContainer}>
-        {todosTipos.map((tipo, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.botaoTipo,
-              tiposSelecionados.includes(tipo) && styles.botaoTipoSelecionado,
-            ]}
-            onPress={() => onToggleTipo(tipo)}
-          >
-            <Text
+        {todosTipos.map((tipo, index) => {
+          const isSelected = tiposSelecionados.includes(tipo);
+          return (
+            <TouchableOpacity
+              key={index}
               style={[
-                styles.textoTipo,
-                tiposSelecionados.includes(tipo) && styles.textoTipoSelecionado,
+                styles.botaoTipo,
+                isSelected && styles.botaoTipoSelecionado,
               ]}
+              onPress={() => onToggleTipo(tipo)}
+              activeOpacity={0.7}
             >
-              {tipo}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.textoTipo,
+                  isSelected && styles.textoTipoSelecionado,
+                ]}
+              >
+                {tipo}
+              </Text>
+              {isSelected && (
+                <Ionicons name="checkmark" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
+              )}
+            </TouchableOpacity>
+          );
+        })}
 
         <TouchableOpacity
           style={styles.botaoAdicionar}
           onPress={onAdicionarTipo}
         >
-          <Ionicons name="add-outline" size={20} color="#0A7D6F" />
+          <Ionicons name="add" size={20} color="#10B981" />
+          <Text style={styles.textoAdicionar}>Outro</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -55,50 +64,56 @@ export default function TrashTypeSelector({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   tiposContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
   botaoTipo: {
-    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   botaoTipoSelecionado: {
-    backgroundColor: '#0A7D6F',
-    borderColor: '#0A7D6F',
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
   },
   textoTipo: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4B5563',
   },
   textoTipoSelecionado: {
     color: '#FFFFFF',
+    fontWeight: '600',
   },
   botaoAdicionar: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    borderWidth: 2,
-    borderColor: '#0A7D6F',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#10B981',
+    borderStyle: 'dashed',
+  },
+  textoAdicionar: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10B981',
+    marginLeft: 4,
   },
 });

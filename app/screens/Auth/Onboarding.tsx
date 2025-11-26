@@ -23,6 +23,7 @@ import {useNavigation} from '@react-navigation/native';
 import {RootStackParamList} from '../../navigation/RootStack';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Feather from '@expo/vector-icons/Feather';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type NavigationProps = NativeStackNavigationProp<
   RootStackParamList,
@@ -55,7 +56,12 @@ const OnboardingScreen: React.FC = () => {
     },
   });
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
+    try {
+      await AsyncStorage.setItem('@hasSeenOnboarding', 'true');
+    } catch (error) {
+      console.error('Error saving onboarding status:', error);
+    }
     navigation.navigate('Welcome');
   };
 

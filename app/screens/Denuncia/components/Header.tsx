@@ -14,7 +14,7 @@ export default function Header({ titulo, onVoltar }: HeaderProps) {
         style={styles.botaoVoltar}
         onPress={onVoltar}
       >
-        <Ionicons name="arrow-back" size={28} color="#333" />
+        <Ionicons name="arrow-back" size={24} color="#1F2937" />
       </TouchableOpacity>
       <Text style={styles.titulo}>{titulo}</Text>
       <View style={{ width: 40 }} />
@@ -27,26 +27,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 16,
+    paddingBottom: 20,
   },
   botaoVoltar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   titulo: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
   },
 });

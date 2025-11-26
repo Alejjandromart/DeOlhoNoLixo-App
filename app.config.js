@@ -9,27 +9,23 @@ module.exports = {
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     splash: {
-      image: "app/assets/images/DeOlhoIcon.png",
+      image: "app/assets/images/splash.png",
       resizeMode: "contain",
       backgroundColor: "#ffffff"
     },
     ios: {
-      supportsTablet: true
+      supportsTablet: true,
+      // googleServicesFile: "./GoogleService-Info.plist"
     },
     android: {
-      config: {
-            googleSignIn: {
-                clientId: "125992023674-3kusk6p4nc0mimnc39gd03kqf5ha5qrn.apps.googleusercontent.com"
-            }
-        },
-
       adaptiveIcon: {
         foregroundImage: "app/assets/images/DeOlhoIcon.png",
         backgroundColor: "#ffffff"
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      package: "com.deolho.app"
+      package: "DeOlho.NoLixo.app",
+      googleServicesFile: "./google-services.json"
     },
     web: {
       bundler: "metro",
@@ -39,17 +35,17 @@ module.exports = {
     plugins: [
       "expo-router",
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      "@react-native-google-signin/google-signin",
+      "expo-audio"
     ],
     experiments: {
       typedRoutes: true
     },
     extra: {
-  // ...existing code...
       eas: {
         projectId: "d80d11f6-aaac-48b6-a1be-83033f23b782"
       }
-      
     },
   },
 };

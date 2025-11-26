@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TextInput as RNTextInput, TouchableOpacity, Text } from 'react-native';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -48,6 +48,7 @@ export default function RealizarDenuncia() {
   const [showAddImageModal, setShowAddImageModal] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showAddTypeModal, setShowAddTypeModal] = useState(false);
+  const [denunciaEnviada, setDenunciaEnviada] = useState(false);
 
   // Verificar se há alterações não salvas
   const temAlteracoes = () => {
@@ -56,7 +57,6 @@ export default function RealizarDenuncia() {
 
   // Confirmar ao voltar se houver alterações
   const handleVoltar = () => {
-    // use ConfirmModal instead of Alert
     if (temAlteracoes()) {
       setShowExitConfirm(true);
     } else {
@@ -91,7 +91,7 @@ export default function RealizarDenuncia() {
   const obterLocalizacaoAtual = async () => {
     try {
       setObtendoLocalizacao(true);
-      
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Erro', 'Permissão de localização não concedida');
@@ -257,61 +257,19 @@ export default function RealizarDenuncia() {
         console.warn('Contexto de denúncias não disponível - denúncia não será adicionada ao feed');
       }
 
-      // TODO: Quando tiver backend, descomentar o código abaixo
-      /*
-      // Criar FormData para enviar imagens
-      const formData = new FormData();
-      
-      // Adicionar imagens
-      imagens.forEach((imagem, index) => {
-        formData.append('imagens', {
-          uri: imagem.uri,
-          type: imagem.type,
-          name: imagem.name,
-        } as any);
-      });
-
-      // Adicionar outros dados
-      formData.append('descricao', descricao);
-      formData.append('tipos', JSON.stringify(tiposSelecionados));
-      formData.append('latitude', localizacao!.latitude.toString());
-      formData.append('longitude', localizacao!.longitude.toString());
-      formData.append('endereco', localizacao!.endereco);
-      formData.append('usuarioId', user?.id || '');
-
-      const API_URL = 'http://seu-servidor.com/api/denuncias';
-
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao enviar denúncia');
-      }
-
-      const data = await response.json();
-      */
-
-      Alert.alert(
-        'Sucesso!',
-        'Sua denúncia foi enviada com sucesso e está sendo analisada.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      // Marcar como enviada para permitir navegação
+      setDenunciaEnviada(true);
 
       // Limpar formulário
       setImagens([]);
       setLocalizacao(null);
       setDescricao('');
       setTiposSelecionados([]);
+
+      // Navegar para tela de confirmação
+      setTimeout(() => {
+        navigation.navigate('DenunciaEnviada' as never);
+      }, 100);
 
     } catch (error) {
       console.error('Erro ao enviar denúncia:', error);
@@ -321,54 +279,99 @@ export default function RealizarDenuncia() {
     }
   };
 
+  // Atualizar endereço manualmente
+  const handleEnderecoChange = (novoEndereco: string) => {
+    if (localizacao) {
+      setLocalizacao({ ...localizacao, endereco: novoEndereco });
+    }
+  };
+
+  // Validar se o usuário pode sair da tela
+  useLayoutEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // Permitir navegação se a denúncia foi enviada com sucesso
+      if (denunciaEnviada) {
+        return;
+      }
+
+      // Caso contrário, verificar se há alterações não salvas
+      if (imagens.length > 0 || descricao.trim() !== '' || localizacao !== null || tiposSelecionados.length > 0) {
+        e.preventDefault();
+        setShowExitConfirm(true);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, imagens, descricao, localizacao, tiposSelecionados, denunciaEnviada]);
+
   return (
     <LinearGradient
-      colors={['#E8E8E8', '#C0C0C0']}
+      colors={['#F0FDF4', '#DCFCE7']} // Fresher green gradient
       style={styles.container}
     >
-      <Header 
-        titulo="Realizar Denúncia" 
-        onVoltar={handleVoltar} 
+      <Header
+        titulo="Nova Denúncia"
+        onVoltar={handleVoltar}
       />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <ImagePickerComponent
-          imagens={imagens}
-          onAdicionarImagem={mostrarOpcoesImagem}
-          onRemoverImagem={(index) => {
-            const novasImagens = imagens.filter((_, i) => i !== index);
-            setImagens(novasImagens);
-          }}
-        />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Evidências</Text>
+          <Text style={styles.sectionSubtitle}>Adicione fotos do local (máx. 4)</Text>
+          <ImagePickerComponent
+            imagens={imagens}
+            onAdicionarImagem={mostrarOpcoesImagem}
+            onRemoverImagem={(index) => {
+              const novasImagens = imagens.filter((_, i) => i !== index);
+              setImagens(novasImagens);
+            }}
+          />
+        </View>
 
-        <LocationPicker
-          localizacao={localizacao}
-          obtendoLocalizacao={obtendoLocalizacao}
-          onObterLocalizacao={obterLocalizacaoAtual}
-        />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Localização</Text>
+          <Text style={styles.sectionSubtitle}>Onde está o problema?</Text>
+          <LocationPicker
+            localizacao={localizacao}
+            obtendoLocalizacao={obtendoLocalizacao}
+            onObterLocalizacao={obterLocalizacaoAtual}
+            onEnderecoChange={handleEnderecoChange}
+          />
+        </View>
 
-        <DescriptionInput
-          descricao={descricao}
-          onChangeText={setDescricao}
-          placeholder="Lixo acumulado na rua Carlos Castelo há muito tempo e os órgãos responsáveis não fazem nada"
-        />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Detalhes</Text>
+          <Text style={styles.sectionSubtitle}>Descreva a situação</Text>
+          <DescriptionInput
+            descricao={descricao}
+            onChangeText={setDescricao}
+            placeholder="Ex: Lixo acumulado na calçada atrapalhando a passagem..."
+          />
+        </View>
 
-        <TrashTypeSelector
-          tiposSelecionados={tiposSelecionados}
-          tiposCustomizados={tiposCustomizados}
-          onToggleTipo={toggleTipo}
-          onAdicionarTipo={adicionarTipoCustomizado}
-        />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Categoria</Text>
+          <Text style={styles.sectionSubtitle}>Qual o tipo de resíduo?</Text>
+          <TrashTypeSelector
+            tiposSelecionados={tiposSelecionados}
+            tiposCustomizados={tiposCustomizados}
+            onToggleTipo={toggleTipo}
+            onAdicionarTipo={adicionarTipoCustomizado}
+          />
+        </View>
 
         <SubmitButton
           onPress={enviarDenuncia}
           loading={carregando}
-          label="Enviar"
+          label="Enviar Denúncia"
         />
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Modal: opções de adicionar imagem */}
@@ -410,13 +413,13 @@ export default function RealizarDenuncia() {
         onSubmit={(value) => {
           if (value && value.length > 0) {
             const tipoCapitalizado = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-            
+
             // Adicionar aos tipos customizados se ainda não existe
-            if (!tiposCustomizados.includes(tipoCapitalizado) && 
-                !['Doméstico', 'Hospitalar'].includes(tipoCapitalizado)) {
+            if (!tiposCustomizados.includes(tipoCapitalizado) &&
+              !['Doméstico', 'Hospitalar'].includes(tipoCapitalizado)) {
               setTiposCustomizados([...tiposCustomizados, tipoCapitalizado]);
             }
-            
+
             // Adicionar aos tipos selecionados se ainda não está selecionado
             if (!tiposSelecionados.includes(tipoCapitalizado)) {
               setTiposSelecionados([...tiposSelecionados, tipoCapitalizado]);
@@ -448,7 +451,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: 20,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+    marginLeft: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 12,
+    marginLeft: 4,
   },
 });
