@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Modal, Share, Platform, StatusBar } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import LikeExplosion from '../LikeExplosion';
+import CommentsModal from './CommentsModal';
 import {
   ExpandedUserInfo,
   ImageCarousel,
@@ -57,6 +59,9 @@ export default function DenunciaCard({
   onAddComment,
 }: DenunciaCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [showLikeExplosion, setShowLikeExplosion] = useState(false);
+  const [localIsLiked, setLocalIsLiked] = useState(isLiked);
+  const [commentsModalVisible, setCommentsModalVisible] = useState(false);
 
   const handleCardPress = () => {
     setExpanded(true);
@@ -65,6 +70,61 @@ export default function DenunciaCard({
   const handleCloseExpanded = () => {
     setExpanded(false);
   };
+
+  const handleLikePress = () => {
+    if (!localIsLiked) {
+      setShowLikeExplosion(true);
+      setLocalIsLiked(true);
+
+      setTimeout(() => {
+        setShowLikeExplosion(false);
+      }, 600);
+    } else {
+      setLocalIsLiked(false);
+    }
+
+    onLike?.();
+  };
+
+  const handleOpenComments = () => {
+    setCommentsModalVisible(true);
+    onComment?.();
+  };
+
+  const handleCloseComments = () => {
+    setCommentsModalVisible(false);
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `${descricao}\n\nLocalização: ${localizacao}`,
+        title: 'Compartilhar Denúncia - DeOlhoNoLixo',
+      });
+      onShare?.();
+    } catch (error) {
+      console.error('Erro ao compartilhar:', error);
+    }
+  };
+
+  // Helper para obter cores do status
+  const getStatusColors = (statusText: string) => {
+    const statusLower = statusText.toLowerCase();
+
+    if (statusLower.includes('pendente') || statusLower.includes('aguardando')) {
+      return { bg: '#FFF3E0', text: '#E65100' }; // Laranja
+    } else if (statusLower.includes('em andamento') || statusLower.includes('processando')) {
+      return { bg: '#E3F2FD', text: '#1565C0' }; // Azul
+    } else if (statusLower.includes('resolvido') || statusLower.includes('concluído')) {
+      return { bg: '#E8F5E9', text: '#2E7D32' }; // Verde
+    } else if (statusLower.includes('cancelado') || statusLower.includes('rejeitado')) {
+      return { bg: '#FFEBEE', text: '#C62828' }; // Vermelho
+    }
+
+    return { bg: '#F5F5F5', text: '#616161' }; // Cinza padrão
+  };
+
+  const statusColors = getStatusColors(status);
 
   return (
     <>
@@ -84,12 +144,14 @@ export default function DenunciaCard({
             <Text style={styles.userName}>{usuario.nome}</Text>
             <View style={styles.metaInfo}>
               <Text style={styles.location}>{localizacao}</Text>
-              <Text style={styles.separator}>|</Text>
-              <Text style={styles.status}>{status}</Text>
+              <Text style={styles.separator}>•</Text>
+              <Text style={styles.time}>{tempoAtras}</Text>
             </View>
           </View>
         </View>
-        <Text style={styles.time}>{tempoAtras}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+          <Text style={[styles.statusText, { color: statusColors.text }]}>{status}</Text>
+        </View>
       </View>
 
       {/* Descrição */}
@@ -107,6 +169,7 @@ export default function DenunciaCard({
               imagens.length === 3 && index === 0 && styles.imageTripleFirst,
               imagens.length === 3 && index > 0 && styles.imageTripleOther,
               imagens.length === 4 && styles.imageQuad,
+              { borderRadius: 16 }
             ]}
           >
             <Image source={{ uri }} style={styles.image} />
@@ -121,27 +184,25 @@ export default function DenunciaCard({
 
       {/* Actions */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton} onPress={onLike}>
-          <Ionicons
-            name={isLiked ? 'heart' : 'heart-outline'}
-            size={22}
-            color={isLiked ? '#FF3B30' : '#666'}
-          />
+        <TouchableOpacity style={styles.actionButton} onPress={handleLikePress}>
+          {showLikeExplosion ? (
+            <LikeExplosion size={24} color="#FF3B30" particleCount={6} />
+          ) : (
+            <Ionicons
+              name={localIsLiked ? 'heart' : 'heart-outline'}
+              size={24}
+              color={localIsLiked ? '#FF3B30' : '#666'}
+            />
+          )}
           {likes > 0 && <Text style={styles.actionText}>{likes}</Text>}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => { handleCardPress(); onComment?.(); }}>
-          <Ionicons name="chatbubble-outline" size={20} color="#666" />
+        <TouchableOpacity style={styles.actionButton} onPress={handleOpenComments}>
+          <Ionicons name="chatbubble-outline" size={24} color="#666" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={onShare}>
-          <Ionicons name="share-outline" size={20} color="#666" />
-        </TouchableOpacity>
-
-        <View style={styles.spacer} />
-
-        <TouchableOpacity style={styles.actionButton} onPress={onBookmark}>
-          <Ionicons name="bookmark-outline" size={20} color="#666" />
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+          <Ionicons name="share-outline" size={24} color="#666" />
         </TouchableOpacity>
       </View>
         </View>
@@ -154,24 +215,36 @@ export default function DenunciaCard({
         transparent={false}
         onRequestClose={handleCloseExpanded}
       >
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={styles.expandedContainer}>
-          {/* Header do Modal */}
-          <View style={styles.expandedHeader}>
-            <TouchableOpacity onPress={handleCloseExpanded} style={styles.closeButton}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.expandedTitle}>DeOlhoNoLixo</Text>
-            <View style={{ width: 24 }} />
-          </View>
-
           <ScrollView 
             style={styles.expandedContent} 
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
-            {/* Carrossel de Imagens */}
-            <ImageCarousel imagens={imagens} />
+            <View>
+              {/* Carrossel de Imagens */}
+              <ImageCarousel imagens={imagens} />
+
+              {/* Botão de Voltar Estilo Perfil */}
+              <TouchableOpacity 
+                onPress={handleCloseExpanded} 
+                style={styles.absoluteCloseButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="arrow-back" size={26} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Botões de Ação (Movido para cima) */}
+            <ExpandedActions 
+              likes={likes} 
+              isLiked={localIsLiked} 
+              onLikePress={handleLikePress}
+              descricao={descricao}
+              localizacao={localizacao}
+            />
 
             <View style={styles.expandedBody}>
               {/* Info do Usuário */}
@@ -188,17 +261,20 @@ export default function DenunciaCard({
               {/* Tags de Tipos de Lixo */}
               <TagsList tipos={tipos} />
 
+              <View style={styles.divider} />
+
               {/* Descrição Completa */}
               <DescriptionSection descricao={descricao} />
+
+              <View style={styles.divider} />
 
               {/* Cards de Detalhes */}
               <DetailCards tipos={tipos} tempoAtras={tempoAtras} />
 
+              <View style={styles.divider} />
+
               {/* Seção de Comentários */}
               <CommentsSection comentarios={comentarios} />
-
-              {/* Botões de Ação */}
-              <ExpandedActions likes={likes} isLiked={isLiked} onLikePress={onLike || (() => {})} />
             </View>
           </ScrollView>
 
@@ -215,6 +291,14 @@ export default function DenunciaCard({
           />
         </View>
       </Modal>
+
+      {/* Modal de Comentários */}
+      <CommentsModal
+        visible={commentsModalVisible}
+        onClose={handleCloseComments}
+        comentarios={comentarios}
+        onAddComment={onAddComment}
+      />
     </>
   );
 }
@@ -281,15 +365,20 @@ const styles = StyleSheet.create({
     color: '#CCC',
     marginHorizontal: 4,
   },
-  status: {
-    fontSize: 10,
-    color: '#0A7D6F',
-    fontWeight: '600',
-  },
   time: {
     fontSize: 10,
     color: '#999',
-    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   description: {
     fontSize: 13,
@@ -362,36 +451,37 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '600',
   },
-  spacer: {
-    flex: 1,
-  },
   // Estilos do Modal Expandido
   expandedContainer: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  expandedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#0A7D6F',
-    paddingHorizontal: 12,
-    paddingTop: 20,
-    paddingBottom: 14,
-    minHeight: 70,
-  },
-  closeButton: {
-    padding: 4,
-  },
-  expandedTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   expandedContent: {
     flex: 1,
   },
   expandedBody: {
     padding: 16,
+  },
+  absoluteCloseButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+    backgroundColor: 'white',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 20,
   },
 });

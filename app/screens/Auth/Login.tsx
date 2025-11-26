@@ -18,7 +18,6 @@ import {
 } from '@gorhom/bottom-sheet';
 import BotaoGoogle from '../../components/SocialButton';
 import CustomInput from '../../components/CustomInputCadastro';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 
 export interface LoginSheetRef {
@@ -38,9 +37,9 @@ interface DadosLogin {
 
 const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro, abrirEsqueciSenha }, ref) => {
   const navigation = useNavigation<any>();
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const sheetRef = useRef<BottomSheetModal>(null);
-  
+
   // Refs para os campos de input
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
@@ -78,7 +77,7 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
     if (campo === 'senha') setPasswordError('');
   }, []);
 
-  // Função de login usando Supabase
+  // Função de login usando Firebase
   const handleSignIn = async () => {
     setEmailError('');
     setPasswordError('');
@@ -97,50 +96,22 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
     try {
       setCarregando(true);
 
-      let emailParaLogin = dados.email;
-
-      // Verificar se o input é um email ou username
-      const isEmail = dados.email.includes('@');
-
-      // Se não for email, buscar o email pelo username na tabela users
-      if (!isEmail) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('users')
-          .select('email')
-          .eq('user_name', dados.email)
-          .single();
-
-        if (profileError || !profileData) {
-          setEmailError('Usuário não encontrado');
-          setCarregando(false);
-          return;
-        }
-
-        emailParaLogin = profileData.email;
-      }
-
-      // Login com Supabase Auth usando o email
-      // Isso verifica automaticamente se o email existe e se a senha está correta
-      const { error } = await signIn(emailParaLogin, dados.senha);
+      // Login com Firebase Auth
+      const { error } = await signIn(dados.email, dados.senha);
 
       if (error) {
-        // Tratar erros específicos do Supabase Auth
-        if (error.message.includes('Invalid login credentials')) {
-          // Senha incorreta ou email não existe
-          if (isEmail) {
-            setEmailError('E-mail ou senha incorretos');
-            setPasswordError('E-mail ou senha incorretos');
-          } else {
-            setPasswordError('Senha incorreta');
-          }
-        } else if (error.message.includes('Email not confirmed')) {
-          setEmailError('Confirme seu e-mail antes de fazer login');
-          Alert.alert('E-mail não confirmado', 'Por favor, confirme seu e-mail antes de fazer login.');
-        } else if (error.message.includes('User not found')) {
-          setEmailError('Usuário não encontrado');
+        // Tratar erros específicos do Firebase Auth
+        const errorCode = error.code;
+        if (errorCode === 'auth/invalid-email') {
+          setEmailError('E-mail inválido');
+        } else if (errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential') {
+          setEmailError('E-mail ou senha incorretos');
+          setPasswordError('E-mail ou senha incorretos');
+        } else if (errorCode === 'auth/too-many-requests') {
+          Alert.alert('Erro', 'Muitas tentativas. Tente novamente mais tarde.');
         } else {
-          // Erro genérico
-          Alert.alert('Erro', error.message);
+          Alert.alert('Erro', 'Falha ao fazer login. Verifique suas credenciais.');
+          console.error(error);
         }
         setCarregando(false);
         return;
@@ -148,7 +119,7 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
 
       // Login bem-sucedido
       sheetRef.current?.dismiss();
-      navigation.navigate('Feed');
+      // navigation.navigate('Feed'); // Removido - AuthNavigator cuida disso automaticamente
     } catch (err: any) {
       console.error('Erro no login:', err);
       Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
@@ -162,9 +133,31 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
   const handleGoogleLoginPress = async () => {
     if (carregando) return;
     setCarregando(true);
-    // TODO: Implementar lógica de login com Google
-    Alert.alert('Google', 'Integração Google aqui.');
-    setCarregando(false);
+
+    try {
+      const { error } = await signInWithGoogle();
+
+      if (error) {
+        if (error.code === '7') { // DEVELOPER_ERROR usually means configuration issue
+          Alert.alert('Erro de Configuração', 'Verifique o webClientId no AuthContext.');
+        } else if (error.code === '-5') { // SIGN_IN_CANCELLED
+          // User cancelled, do nothing
+          console.log('Login cancelado pelo usuário');
+        } else {
+          Alert.alert('Erro', 'Falha ao entrar com Google. Tente novamente.');
+          console.error(error);
+        }
+      } else {
+        // Login successful - AuthNavigator handles navigation
+        console.log('✅ Login com Google bem-sucedido!');
+        sheetRef.current?.dismiss();
+      }
+    } catch (err) {
+      console.error('Erro inesperado no Google Login:', err);
+      Alert.alert('Erro', 'Ocorreu um erro inesperado.');
+    } finally {
+      setCarregando(false);
+    }
   };
 
   return (
@@ -199,8 +192,8 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
 
           <CustomInput
             ref={emailInputRef}
-            rotulo="Usuário ou E-mail"
-            sugestao="Digite seu usuário ou email"
+            rotulo="E-mail"
+            sugestao="Digite seu e-mail"
             valor={dados.email}
             aoAlterarTexto={(t) => atualizar('email', t)}
             nomeIcone="person-outline"
@@ -228,7 +221,7 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
           />
           {passwordError ? <Text style={styles.erro}>{passwordError}</Text> : null}
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={{ alignSelf: 'flex-end', marginTop: 8 }}
             onPress={() => {
               sheetRef.current?.dismiss();
@@ -240,11 +233,11 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
             <Text style={styles.esqueceuSenha}>Esqueceu a senha?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.loginButton,
               carregando && styles.loginButtonDisabled
-            ]} 
+            ]}
             onPress={handleLoginPress}
             activeOpacity={0.8}
             disabled={carregando}
@@ -262,14 +255,14 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
             <View style={styles.linha} />
           </View>
 
-          <BotaoGoogle 
-            texto="Continuar com Google" 
+          <BotaoGoogle
+            texto="Continuar com Google"
             aoPressionar={handleGoogleLoginPress}
             carregando={carregando}
           />
 
-          <TouchableOpacity 
-            style={{ alignItems: 'center', marginTop: 8 }} 
+          <TouchableOpacity
+            style={{ alignItems: 'center', marginTop: 8 }}
             onPress={() => {
               sheetRef.current?.dismiss();
               setTimeout(() => {
@@ -326,24 +319,24 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: 6,
   },
-  erro: { 
-    color: '#FFD6D6', 
-    marginTop: -8, 
-    marginBottom: 10, 
-    fontSize: 12 
+  erro: {
+    color: '#FFD6D6',
+    marginTop: -8,
+    marginBottom: 10,
+    fontSize: 12
   },
-  esqueceuSenha: { 
-    color: '#70E0C4', 
-    fontSize: 14, 
-    fontWeight: '600' 
+  esqueceuSenha: {
+    color: '#70E0C4',
+    fontSize: 14,
+    fontWeight: '600'
   },
-  loginButton: { 
-    backgroundColor: '#A4D65E', 
-    borderRadius: 30, 
-    paddingVertical: 18, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginTop: 24, 
+  loginButton: {
+    backgroundColor: '#A4D65E',
+    borderRadius: 30,
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
     marginBottom: 16,
     elevation: 2,
     shadowColor: '#000',
@@ -355,35 +348,35 @@ const styles = StyleSheet.create({
   loginButtonDisabled: {
     opacity: 0.5,
   },
-  loginButtonText: { 
-    color: '#115E4C', 
-    fontSize: 18, 
-    fontWeight: '700', 
-    letterSpacing: 0.5 
+  loginButtonText: {
+    color: '#115E4C',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5
   },
-  divisor: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginVertical: 16 
+  divisor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16
   },
-  linha: { 
-    flex: 1, 
-    height: 1, 
-    backgroundColor: '#FFFFFF60' 
+  linha: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#FFFFFF60'
   },
-  divisorTexto: { 
-    color: '#FFFFFF', 
-    marginHorizontal: 12, 
+  divisorTexto: {
+    color: '#FFFFFF',
+    marginHorizontal: 12,
     fontWeight: '700',
     fontSize: 14,
   },
-  rodape: { 
-    color: '#FFFFFF', 
+  rodape: {
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
   },
-  link: { 
-    textDecorationLine: 'underline', 
+  link: {
+    textDecorationLine: 'underline',
     fontWeight: '700',
     color: '#C8DEA1',
   },

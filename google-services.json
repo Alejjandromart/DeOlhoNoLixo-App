@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "27306055437",
+    "project_id": "deolho-app",
+    "storage_bucket": "deolho-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:27306055437:android:e07ac09545764adbed0244",
+        "android_client_info": {
+          "package_name": "DeOlho.NoLixo.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "27306055437-dk7ec1otbnimuj1n04d08f6dprg4r0tm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "DeOlho.NoLixo.app",
+            "certificate_hash": "58e5c6eb90a5a758a28e573d8d9c8be74af70c7b"
+          }
+        },
+        {
+          "client_id": "27306055437-lrs52il6nh3v6biba60tmcqrr9mtuu2f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "DeOlho.NoLixo.app",
+            "certificate_hash": "18db41379ef5df5942fa64c6fb766ff215c85438"
+          }
+        },
+        {
+          "client_id": "27306055437-f16dqr5ibt1i3hkjpp8ou6jc9i7adpud.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxEmH_N1qy2QrSypdAqgSeRu7V-vJH-Mk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "27306055437-f16dqr5ibt1i3hkjpp8ou6jc9i7adpud.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

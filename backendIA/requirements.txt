@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+google-generativeai
+slowapi
+pydantic[email]
+pydantic-settings
+python-multipart

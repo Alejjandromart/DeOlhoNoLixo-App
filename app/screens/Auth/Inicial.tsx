@@ -57,7 +57,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
   return (
     <BottomSheetModalProvider>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle="light-content" translucent backgroundColor="#FFFFFF" />
         
         <ImageBackground
           source={require('../../assets/images/backgroundInicial.png')}

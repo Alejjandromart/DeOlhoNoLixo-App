@@ -25,8 +25,8 @@ import type {
   ResultadoValidacao,
   RespostaCadastro,
 } from '../../_types/type';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface CadastroSheetRef {
   abrir: () => void;
@@ -39,9 +39,9 @@ interface CadastroScreenProps {
 
 const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abrirLogin }, ref) => {
   const navigation = useNavigation<any>();
-  const { signUp } = useAuth();
+  const { signUp, signInWithGoogle } = useAuth();
   const sheetRef = useRef<BottomSheetModal>(null);
-  
+
   // Refs para os campos de input
   const nomeCompletoInputRef = useRef<TextInput>(null);
   const emailInputRef = useRef<TextInput>(null);
@@ -98,30 +98,50 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
 
   const resultado = useMemo(() => validar(dados), [dados]);
 
-  // Função de cadastro usando Supabase
+  // Função de cadastro usando Firebase
   const handleSignUp = async () => {
     const { valido, erros: e } = validar(dados);
     if (!valido) return setErros(e);
 
     try {
       setCarregando(true);
-      
+
+      // Definir flag ANTES do cadastro para evitar race condition com o AuthNavigator
+      // O onAuthStateChanged dispara assim que o signUp ocorre, antes desta função continuar
+      await AsyncStorage.setItem('@isFirstLogin', 'true');
+
       // Cadastrar usuário usando o contexto de autenticação
-      const { error } = await signUp(dados.email, dados.senha, {
-        nomeCompleto: dados.nomeCompleto,
-        nomeUsuario: dados.nomeUsuario,
-      });
+      // Nota: Firebase Auth cria o usuário apenas com email e senha.
+      // Para salvar dados adicionais (nome, username), seria necessário usar Firestore ou updateProfile.
+      const { error } = await signUp(dados.email, dados.senha);
 
       if (error) {
-        Alert.alert('Erro', error.message);
+        // Se falhar, remove a flag
+        await AsyncStorage.removeItem('@isFirstLogin');
+
+        const errorCode = error.code;
+        if (errorCode === 'auth/email-already-in-use') {
+          Alert.alert('Erro', 'Este e-mail já está em uso.');
+        } else if (errorCode === 'auth/invalid-email') {
+          Alert.alert('Erro', 'E-mail inválido.');
+        } else if (errorCode === 'auth/weak-password') {
+          Alert.alert('Erro', 'A senha é muito fraca.');
+        } else {
+          Alert.alert('Erro', 'Falha ao cadastrar. Tente novamente.');
+          console.error(error);
+        }
         return;
       }
 
-      Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
+      // Cadastro bem-sucedido
+      console.log('✅ Cadastro bem-sucedido! Flag @isFirstLogin já definida.');
       sheetRef.current?.dismiss();
-      navigation.navigate('Tutorial');
+      // O AuthNavigator vai detectar e redirecionar para Tutorial
     } catch (err) {
+      // Se der erro inesperado, remove a flag
+      await AsyncStorage.removeItem('@isFirstLogin');
       Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
+      console.error(err);
     } finally {
       setCarregando(false);
     }
@@ -129,7 +149,34 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
 
   const onCadastrar = handleSignUp;
 
-  const onGoogle = () => Alert.alert('Google', 'Integração Google aqui.');
+  const onGoogle = async () => {
+    if (carregando) return;
+    setCarregando(true);
+
+    try {
+      const { error } = await signInWithGoogle();
+
+      if (error) {
+        if (error.code === '7') { // DEVELOPER_ERROR
+          Alert.alert('Erro de Configuração', 'Verifique o webClientId no AuthContext.');
+        } else if (error.code === '-5') { // SIGN_IN_CANCELLED
+          console.log('Cadastro cancelado pelo usuário');
+        } else {
+          Alert.alert('Erro', 'Falha ao cadastrar com Google. Tente novamente.');
+          console.error(error);
+        }
+      } else {
+        // Signup successful - AuthNavigator handles navigation
+        console.log('✅ Cadastro com Google bem-sucedido!');
+        sheetRef.current?.dismiss();
+      }
+    } catch (err) {
+      console.error('Erro inesperado no Google Cadastro:', err);
+      Alert.alert('Erro', 'Ocorreu um erro inesperado.');
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   return (
     <BottomSheetModal
@@ -248,11 +295,11 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
           />
           {erros.termos ? <Text style={styles.erro}>{erros.termos}</Text> : null}
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.cadastrarButton,
               carregando && styles.cadastrarButtonDisabled
-            ]} 
+            ]}
             onPress={onCadastrar}
             activeOpacity={0.8}
             disabled={carregando}
@@ -272,8 +319,8 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
 
           <BotaoGoogle texto="Continuar com Google" aoPressionar={onGoogle} />
 
-          <TouchableOpacity 
-            style={{ alignItems: 'center', marginTop: 8 }} 
+          <TouchableOpacity
+            style={{ alignItems: 'center', marginTop: 8 }}
             onPress={() => {
               sheetRef.current?.dismiss();
               setTimeout(() => {
@@ -333,18 +380,18 @@ const styles = StyleSheet.create({
   erro: { color: '#FFD6D6', marginTop: -8, marginBottom: 10, fontSize: 12 },
   linhaTermos: { flexDirection: 'row', alignItems: 'center', marginTop: 2, marginBottom: 10 },
   termosTexto: { color: '#FFFFFF', fontSize: 14, flex: 1 },
-  link: { 
-    textDecorationLine: 'underline', 
+  link: {
+    textDecorationLine: 'underline',
     fontWeight: '700',
     color: '#C8DEA1',
   },
-  cadastrarButton: { 
-    backgroundColor: '#A4D65E', 
-    borderRadius: 30, 
-    paddingVertical: 18, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginTop: 24, 
+  cadastrarButton: {
+    backgroundColor: '#A4D65E',
+    borderRadius: 30,
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
     marginBottom: 16,
     elevation: 2,
     shadowColor: '#000',
@@ -357,30 +404,30 @@ const styles = StyleSheet.create({
   cadastrarButtonDisabled: {
     opacity: 0.5,
   },
-  cadastrarButtonText: { 
-    color: '#115E4C', 
-    fontSize: 18, 
-    fontWeight: '700', 
-    letterSpacing: 0.5 
+  cadastrarButtonText: {
+    color: '#115E4C',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5
   },
-  divisor: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginVertical: 16 
+  divisor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16
   },
-  linha: { 
-    flex: 1, 
-    height: 1, 
-    backgroundColor: '#FFFFFF60' 
+  linha: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#FFFFFF60'
   },
-  divisorTexto: { 
-    color: '#FFFFFF', 
-    marginHorizontal: 12, 
+  divisorTexto: {
+    color: '#FFFFFF',
+    marginHorizontal: 12,
     fontWeight: '700',
     fontSize: 14,
   },
-  rodape: { 
-    color: '#FFFFFF', 
+  rodape: {
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
   },

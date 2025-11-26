@@ -4,32 +4,41 @@ import { View, Image, ScrollView, StyleSheet, Dimensions } from 'react-native';
 interface ImageCarouselProps {
   imagens: string[];
   onIndexChange?: (index: number) => void;
+  width?: number;
+  style?: any;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
-export default function ImageCarousel({ imagens, onIndexChange }: ImageCarouselProps) {
+export default function ImageCarousel({ imagens, onIndexChange, width = SCREEN_WIDTH, style }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleScroll = (event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / SCREEN_WIDTH);
+    const index = Math.round(scrollPosition / width);
     setCurrentIndex(index);
     onIndexChange?.(index);
   };
 
   return (
-    <View>
+    <View style={[styles.container, style, { width }]}>
       <ScrollView
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        style={styles.carousel}
+        style={{ width, height: 280 }}
+        contentContainerStyle={{ width: width * imagens.length }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        decelerationRate="fast"
+        snapToInterval={width}
       >
         {imagens.map((uri, index) => (
-          <Image key={index} source={{ uri }} style={styles.image} />
+          <Image 
+            key={index} 
+            source={{ uri }} 
+            style={[styles.image, { width }]} 
+          />
         ))}
       </ScrollView>
 
@@ -52,14 +61,17 @@ export default function ImageCarousel({ imagens, onIndexChange }: ImageCarouselP
 }
 
 const styles = StyleSheet.create({
-  carousel: {
-    height: 280,
-    backgroundColor: '#000',
+  container: {
+    height: 320,
+    backgroundColor: '#F5F5F5',
+    overflow: 'hidden',
+    borderRadius: 24,
+    marginHorizontal: 16,
+    marginTop: 0,
   },
   image: {
-    width: SCREEN_WIDTH,
-    height: 280,
-    resizeMode: 'contain',
+    height: 320,
+    resizeMode: 'cover',
   },
   pagination: {
     flexDirection: 'row',
@@ -73,15 +85,16 @@ const styles = StyleSheet.create({
     right: 0,
   },
   paginationDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  paginationDotActive: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 4,
+  },
+  paginationDotActive: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#0B846C',
   },
 });

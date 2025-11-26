@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface SubmitButtonProps {
   onPress: () => void;
@@ -10,40 +11,47 @@ interface SubmitButtonProps {
 export default function SubmitButton({ onPress, loading, label = "Enviar" }: SubmitButtonProps) {
   return (
     <TouchableOpacity
-      style={[styles.botao, loading && styles.botaoDisabled]}
       onPress={onPress}
       disabled={loading}
-      activeOpacity={0.8}
+      activeOpacity={0.9}
+      style={styles.container}
     >
-      {loading ? (
-        <ActivityIndicator size="small" color="#FFFFFF" />
-      ) : (
-        <Text style={styles.texto}>{label}</Text>
-      )}
+      <LinearGradient
+        colors={loading ? ['#9CA3AF', '#6B7280'] : ['#10B981', '#059669']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.gradient}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.texto}>{label}</Text>
+        )}
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  botao: {
-    backgroundColor: '#9BC938',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 16,
+  container: {
+    marginTop: 24,
     marginBottom: 8,
-    shadowColor: '#000',
+    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 6,
   },
-  botaoDisabled: {
-    opacity: 0.6,
+  gradient: {
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   texto: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });

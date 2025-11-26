@@ -1,0 +1,8 @@
+{
+  "name": "AI DEOLHO",
+  "description": "Aplicativo inteligente para denúncia ambiental com análise de imagem e geolocalização via Gemini.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}

@@ -19,7 +19,8 @@ import {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import CustomInput from '../../components/CustomInputCadastro';
-import { supabase } from '../../lib/supabase';
+import { auth } from '../../lib/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 export interface EsqueciSenhaSheetRef {
   abrir: () => void;
@@ -94,29 +95,8 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
       try {
         setCarregando(true);
 
-        // Verificar se o email existe (opcional, mas recomendado)
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('email')
-          .eq('email', email)
-          .single();
-
-        if (userError || !userData) {
-          setEmailError('E-mail não encontrado');
-          setCarregando(false);
-          return;
-        }
-
-        // Enviar email de redefinição de senha
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: 'deolhoapp://reset-password', // Deep link para o app
-        });
-
-        if (error) {
-          Alert.alert('Erro', error.message);
-          setCarregando(false);
-          return;
-        }
+        // Enviar email de redefinição de senha com Firebase
+        await sendPasswordResetEmail(auth, email);
 
         // Sucesso
         setEmailEnviado(true);
@@ -140,7 +120,13 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
         );
       } catch (err: any) {
         console.error('Erro ao resetar senha:', err);
-        Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
+        if (err.code === 'auth/user-not-found') {
+          setEmailError('E-mail não encontrado');
+        } else if (err.code === 'auth/invalid-email') {
+          setEmailError('E-mail inválido');
+        } else {
+          Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
+        }
       } finally {
         setCarregando(false);
       }

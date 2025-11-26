@@ -1,19 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Platform, Animated, LayoutChangeEvent } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TabButton from './TabButton';
 import CentralButton from './CentralButton';
 import AnimatedSlider from './AnimatedSlider';
 import { COLORS } from './colors';
 
-interface BottomTabBarProps {
-  currentRoute?: string;
-}
+const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
+  const insets = useSafeAreaInsets();
+  const currentRoute = state.routes[state.index].name;
 
-const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentRoute = 'Feed' }) => {
-  const navigation = useNavigation<any>();
-  
   // Animações de escala para os botões
   const [scaleAnim] = useState(new Animated.Value(1));
   const [homeScale] = useState(new Animated.Value(1));
@@ -24,18 +22,18 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentRoute = 'Feed' }) =>
   const [profileLayout, setProfileLayout] = useState({ x: 0, width: 0 });
 
   // Posição do slider animado (0 = Feed, 1 = Perfil)
-  const sliderPosition = useSharedValue(currentRoute === 'Feed' ? 0 : 1);
+  const sliderPosition = useSharedValue(state.index);
 
   const isActive = (route: string) => currentRoute === route;
 
   // Atualiza a posição do slider quando a rota muda
   useEffect(() => {
-    sliderPosition.value = withSpring(currentRoute === 'Feed' ? 0 : 1, {
+    sliderPosition.value = withSpring(state.index, {
       damping: 20,
       stiffness: 120,
       mass: 0.5,
     });
-  }, [currentRoute]);
+  }, [state.index]);
 
   // Handlers de layout
   const handleFeedLayout = (event: LayoutChangeEvent) => {
@@ -58,6 +56,16 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentRoute = 'Feed' }) =>
 
   // Animação de feedback ao tocar
   const animateTab = (scaleValue: Animated.Value, route: string) => {
+    const event = navigation.emit({
+      type: 'tabPress',
+      target: state.routes.find(r => r.name === route)?.key || '',
+      canPreventDefault: true,
+    });
+
+    if (!isActive(route) && !event.defaultPrevented) {
+      navigation.navigate(route);
+    }
+
     Animated.sequence([
       Animated.timing(scaleValue, {
         toValue: 0.85,
@@ -69,9 +77,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentRoute = 'Feed' }) =>
         friction: 3,
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      navigation.navigate(route);
-    });
+    ]).start();
   };
 
   const handleCentralPress = () => {
@@ -87,14 +93,14 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentRoute = 'Feed' }) =>
         useNativeDriver: true,
       }),
     ]).start(() => {
-      navigation.navigate('RealizarDenuncia');
+      navigation.navigate('DenunciaIA');
     });
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.innerContainer}>
-        
+      <View style={[styles.innerContainer, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
+
         <AnimatedSlider
           animatedStyle={sliderAnimatedStyle}
           leftPosition={feedLayout.x + (feedLayout.width / 2) - 32}
@@ -156,7 +162,6 @@ const styles = StyleSheet.create({
   },
   innerContainer: {
     flexDirection: 'row',
-    paddingBottom: Platform.OS === 'ios' ? 40 : 32,
     paddingTop: 12,
     paddingHorizontal: 16,
     justifyContent: 'space-around',

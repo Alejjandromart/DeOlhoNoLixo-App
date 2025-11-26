@@ -12,6 +12,7 @@ import ConfiguracaoScreen from '../screens/Home/ConfiguracaoScreen';
 import ProfileScreen from '../screens/Home/ProfileScreen';
 import AlterarSenhaScreen from '../screens/Home/AlterarSenhaScreen';
 import EsqueciSenha from '../screens/Auth/EsqueciSenha';
+import DenunciaIA from '../screens/DenunciaIA';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -27,6 +28,7 @@ export type RootStackParamList = {
   AlterarSenha: undefined;
   EsqueciSenha: undefined;
   NovaDenuncia: undefined;
+  DenunciaIA: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -45,6 +47,7 @@ const RootStack = () => (
     <Stack.Screen name="Profile" component={ProfileScreen} />
     <Stack.Screen name="AlterarSenha" component={AlterarSenhaScreen} />
     <Stack.Screen name="EsqueciSenha" component={EsqueciSenha} />
+    <Stack.Screen name="DenunciaIA" component={DenunciaIA} />
   </Stack.Navigator>
 );
 
