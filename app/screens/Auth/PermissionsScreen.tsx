@@ -24,7 +24,7 @@ const PermissionsScreen = () => {
 
       // Se ambas já estiverem concedidas, navega para a tela principal
       if (locationStatus.status === 'granted' && cameraPermission?.status === 'granted') {
-        navigation.replace('MainTabs');
+        navigation.replace('Feed');
       }
     };
 
@@ -41,13 +41,13 @@ const PermissionsScreen = () => {
 
     // Se ambas forem concedidas, navega para o app
     if (locationResponse.status === 'granted' && cameraResponse.granted) {
-      navigation.replace('MainTabs');
+      navigation.replace('Feed');
     }
   };
 
   const handleContinue = () => {
     if (locationPermission === 'granted' && cameraPermission?.status === 'granted') {
-      navigation.replace('MainTabs');
+      navigation.replace('Feed');
     } else {
       // Abre as configurações do app para o usuário conceder manualmente
       Linking.openSettings();
@@ -55,7 +55,7 @@ const PermissionsScreen = () => {
   };
 
   const handleSkip = () => {
-    navigation.replace('MainTabs');
+    navigation.replace('Feed');
   };
 
   const allPermissionsGranted = locationPermission === 'granted' && cameraPermission?.status === 'granted';

@@ -48,6 +48,30 @@ yarn-error.*
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+ENV/
+
+# Backend específico
+backend/ai/
+*.backup.tsx
+test_*.py
+*test*.ts
+
+# Arquivos temporários
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+
+# Documentação de desenvolvimento (manter apenas produção)
+EXEMPLO_*.tsx
+*_EXAMPLE.*
 
 # Virtual envs
 .venv/
