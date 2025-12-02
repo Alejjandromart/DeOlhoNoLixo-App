@@ -78,6 +78,8 @@ const FeedScreen: React.FC = () => {
         else if (diffHours < 24) tempoAtras = `${diffHours}h atrás`;
         else tempoAtras = `${diffDays}d atrás`;
         
+        console.log('📸 Imagens recebidas:', item.images?.length || 0, 'primeira:', item.images?.[0]?.substring(0, 50));
+        
         return {
           id: index + 1,
           usuario: {
