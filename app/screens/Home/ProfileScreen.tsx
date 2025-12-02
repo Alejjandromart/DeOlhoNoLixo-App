@@ -1,14 +1,180 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { updateProfile, updateEmail } from 'firebase/auth';
+import { db, storage, auth } from '../../lib/firebase';
+import * as ImagePicker from 'expo-image-picker';
+
+interface ToastProps {
+  message: string;
+  type: 'success' | 'error' | 'info';
+  visible: boolean;
+}
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
-  const [usuario, setUsuario] = useState('Luane Araujo');
-  const [email, setEmail] = useState('luane.araujo@example.com');
-  const [cidade, setCidade] = useState('Itacoatiara');
+  const { user } = useAuth();
+  const [nomeCompleto, setNomeCompleto] = useState('');
+  const [nomeUsuario, setNomeUsuario] = useState('');
+  const [email, setEmail] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  // Evita que informações antigas sejam exibidas antes do carregamento inicial
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [toast, setToast] = useState<ToastProps>({ message: '', type: 'success', visible: false });
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        if (user?.uid) {
+          const docRef = doc(db, 'usuarios', user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setNomeCompleto(data.nomeCompleto || user.displayName || '');
+            setNomeUsuario(data.nomeUsuario || '');
+            setEmail(data.email || user.email || '');
+            setCidade(data.cidade || '');
+            setPhotoURL(data.photoURL || user.photoURL);
+          }
+        } else {
+          // Se não houver usuário autenticado, resetar campos
+          setNomeCompleto('');
+          setNomeUsuario('');
+          setEmail('');
+          setCidade('');
+          setPhotoURL(null);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar dados:", error);
+      } finally {
+        // Sempre desliga o carregamento inicial após a tentativa
+        setInitialLoading(false);
+      }
+    };
+
+    // Sinaliza que estamos iniciando o carregamento
+    setInitialLoading(true);
+    fetchUserData();
+  }, [user]);
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      showToast('Precisamos de acesso à galeria para trocar a foto.', 'error');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      handleImageUpload(result.assets[0].uri);
+    }
+  };
+
+  const handleImageUpload = async (uri: string) => {
+    if (!user) return;
+    setUploading(true);
+    try {
+      // Convert URI to Blob using XMLHttpRequest (more reliable for local files on Android)
+      const blob: Blob = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.onload = function () {
+          resolve(xhr.response);
+        };
+        xhr.onerror = function (e) {
+          console.log('XHR Error:', e);
+          reject(new TypeError("Network request failed"));
+        };
+        xhr.responseType = "blob";
+        xhr.open("GET", uri, true);
+        xhr.send(null);
+      });
+
+      const filename = `profile_photos/${user.uid}_${Date.now()}.jpg`;
+      const storageRef = ref(storage, filename);
+
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      setPhotoURL(downloadURL);
+      
+      // Atualizar Auth e Firestore imediatamente com a nova foto
+      await updateProfile(user, { photoURL: downloadURL });
+      await setDoc(doc(db, 'usuarios', user.uid), { photoURL: downloadURL }, { merge: true });
+      
+      showToast('Foto de perfil atualizada!', 'success');
+    } catch (error) {
+      console.error("Erro ao upload imagem:", error);
+      showToast('Falha ao enviar a imagem.', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ message, type, visible: true });
+    Animated.sequence([
+      Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.delay(2000),
+      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true })
+    ]).start(() => {
+      setToast({ message: '', type: 'success', visible: false });
+    });
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      // Atualizar ou Criar no Firestore (merge: true garante que não sobrescreva outros campos se criar agora)
+      await setDoc(doc(db, 'usuarios', user.uid), {
+        nomeCompleto,
+        nomeUsuario,
+        cidade,
+        email: user.email // Garantir que o email esteja lá também
+      }, { merge: true });
+
+      // Atualizar Auth Profile (Display Name)
+      if (nomeCompleto !== user.displayName) {
+        await updateProfile(user, { displayName: nomeCompleto });
+      }
+
+      // Atualizar Email no Auth
+      if (email !== user.email) {
+        await updateEmail(user, email);
+      }
+
+      showToast('Perfil atualizado com sucesso!', 'success');
+      navigation.goBack();
+    } catch (error) {
+      console.error("Erro ao salvar perfil:", error);
+      showToast('Falha ao atualizar perfil.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (initialLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }}>
+        <ActivityIndicator size="large" color="#076653" />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView 
@@ -19,7 +185,7 @@ const ProfileScreen = () => {
         <Feather name="arrow-left" size={26} color="#333" />
       </TouchableOpacity>
 
-      <Text style={styles.header}>Perfil</Text>
+      <Text style={styles.header}>Editar Perfil</Text>
 
       <ScrollView 
         style={styles.scrollView}
@@ -31,11 +197,17 @@ const ProfileScreen = () => {
         <View style={styles.profileCardWrapper}>
           {/* Foto posicionada para ficar metade fora */}
           <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' }}
-              style={styles.profileImage}
-            />
-            <TouchableOpacity style={styles.cameraButton}>
+            {uploading ? (
+              <View style={[styles.profileImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#ddd' }]}>
+                <ActivityIndicator color="#076653" />
+              </View>
+            ) : (
+              <Image
+                source={photoURL ? { uri: photoURL } : require('../../assets/images/CAPI.png')}
+                style={styles.profileImage}
+              />
+            )}
+            <TouchableOpacity style={styles.cameraButton} onPress={pickImage}>
               <Feather name="camera" size={18} color="white" />
             </TouchableOpacity>
           </View>
@@ -46,8 +218,8 @@ const ProfileScreen = () => {
               colors={['#076653', '#0A4338']}
               style={styles.profileGradient}
             >
-              <Text style={styles.profileName}>Luane Araujo</Text>
-              <Text style={styles.profileLocation}>Itacoatiara</Text>
+              <Text style={styles.profileName}>{nomeUsuario || 'Usuário'}</Text>
+              <Text style={styles.profileLocation}>{cidade || 'Cidade não informada'}</Text>
             </LinearGradient>
           </View>
         </View>
@@ -60,8 +232,8 @@ const ProfileScreen = () => {
             <TextInput
               style={styles.input}
               placeholder="Nome de usuário"
-              value={usuario}
-              onChangeText={setUsuario}
+              value={nomeUsuario}
+              onChangeText={setNomeUsuario}
               placeholderTextColor="#999"
             />
           </View>
@@ -93,10 +265,33 @@ const ProfileScreen = () => {
         </View>
 
         {/* Botão Salvar */}
-        <TouchableOpacity style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Salvar alterações</Text>
+        <TouchableOpacity 
+          style={[styles.saveButton, loading && { opacity: 0.7 }]} 
+          onPress={handleSave}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.saveButtonText}>Salvar alterações</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modern Toast Notification */}
+      {toast.visible && (
+        <Animated.View style={[styles.toast, styles[`toast_${toast.type}`], { opacity: toastOpacity }]}>
+          <View style={styles.toastContent}>
+            <Feather 
+              name={toast.type === 'success' ? 'check-circle' : toast.type === 'error' ? 'alert-circle' : 'info'} 
+              size={20} 
+              color="white" 
+              style={{ marginRight: 12 }}
+            />
+            <Text style={styles.toastMessage}>{toast.message}</Text>
+          </View>
+        </Animated.View>
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -104,7 +299,7 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: '#F5F5F5',
   },
   backButton: {
     position: 'absolute',
@@ -216,8 +411,8 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     paddingHorizontal: 16,
     marginBottom: 18,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    // borderWidth: 1,
+    // borderColor: '#E0E0E0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -250,6 +445,41 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: 'bold',
     letterSpacing: 0.5,
+  },
+  toast: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  toast_success: {
+    backgroundColor: '#34C759',
+  },
+  toast_error: {
+    backgroundColor: '#FF3B30',
+  },
+  toast_info: {
+    backgroundColor: '#007AFF',
+  },
+  toastContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  toastMessage: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
   },
 });
 

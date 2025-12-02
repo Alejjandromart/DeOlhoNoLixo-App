@@ -15,6 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import BottomTabBar from '../../components/BottomTabBar';
 import DenunciaCard from '../../components/Feed/DenunciaCard';
 import { getFeedDenuncias, FeedDenuncia } from '../../services/feedService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 const FeedScreen: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -25,11 +27,32 @@ const FeedScreen: React.FC = () => {
   const [filterOption, setFilterOption] = useState<'recente' | 'proximo'>('recente');
   const [feedDenuncias, setFeedDenuncias] = useState<any[]>([]);
   const [useFeedService, setUseFeedService] = useState(true);
+  const [userName, setUserName] = useState(user?.displayName || user?.email?.split('@')[0] || 'Usuário');
   const insets = useSafeAreaInsets();
 
   const denuncias = useFeedService ? feedDenuncias : (denunciaContext?.denuncias || []);
   const curtirDenuncia = denunciaContext?.curtirDenuncia || ((id: number) => { });
   const adicionarComentario = denunciaContext?.adicionarComentario || ((denunciaId: number, texto: string, usuario: any) => { });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (user?.uid) {
+        try {
+          const docRef = doc(db, 'usuarios', user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.nomeUsuario) {
+              setUserName(data.nomeUsuario);
+            }
+          }
+        } catch (error) {
+          console.log("Error fetching user data:", error);
+        }
+      }
+    };
+    fetchUserData();
+  }, [user]);
 
   const handleFilterSelect = (option: 'recente' | 'proximo') => {
     setFilterOption(option);
@@ -118,8 +141,6 @@ const FeedScreen: React.FC = () => {
     await loadFeedFromBackend();
     setRefreshing(false);
   };
-
-  const userName = user?.email?.split('@')[0] || 'Usuário';
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>

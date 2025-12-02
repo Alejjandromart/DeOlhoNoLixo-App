@@ -2,6 +2,7 @@ import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { AuthProvider } from './app/context/AuthContext';
+import { PermissionProvider } from './app/context/PermissionContext';
 import AuthNavigator from './app/navigation/AuthNavigator';
 import { useFonts } from 'expo-font';
 import { View, ActivityIndicator } from 'react-native';
@@ -27,9 +28,11 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <NavigationContainer>
-          <AuthNavigator />
-        </NavigationContainer>
+        <PermissionProvider>
+          <NavigationContainer>
+            <AuthNavigator />
+          </NavigationContainer>
+        </PermissionProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );
