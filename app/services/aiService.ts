@@ -4,7 +4,7 @@
 
 // Use o IP do seu computador na rede local para testar no celular
 // Para encontrar seu IP: ipconfig (Windows) ou ifconfig (Mac/Linux)
-const AI_API_URL = 'http://10.82.9.180:8000'; // IP local da máquina
+const AI_API_URL = 'http://192.168.0.3:8000'; // IP local da máquina
 
 export interface DeteccaoLixo {
   tipo: string;

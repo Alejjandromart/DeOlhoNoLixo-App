@@ -210,9 +210,9 @@ export default function DenunciaIA() {
                 formData.append('usuario', user.email || 'Anônimo');
                 formData.append('categoria', reportData.category || 'ambiental');
                 
-                console.log('🌐 Enviando para:', 'http://10.82.9.180:8000/analyze-and-notify');
+                console.log('🌐 Enviando para:', 'http://192.168.0.3:8000/analyze-and-notify');
                 
-                const notifyResponse = await fetch('http://10.82.9.180:8000/analyze-and-notify', {
+                const notifyResponse = await fetch('http://192.168.0.3:8000/analyze-and-notify', {
                     method: 'POST',
                     body: formData,
                 });
