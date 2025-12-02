@@ -1,6 +1,17 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 
-const FEED_API_URL = 'http://192.168.0.3:8001';
+// Para Android Emulator use 10.0.2.2, para iOS Simulator use localhost, para dispositivo físico use seu IP local
+const getBaseUrl = () => {
+  const backendUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL || 'http://localhost:8000';
+  
+  if (Platform.OS === 'android' && backendUrl.includes('localhost')) {
+    return 'http://10.0.2.2:8000';
+  }
+  return backendUrl;
+};
+
+const FEED_API_URL = getBaseUrl();
 const API_KEY = 'secure-api-key-12345';
 
 export interface FeedDenuncia {

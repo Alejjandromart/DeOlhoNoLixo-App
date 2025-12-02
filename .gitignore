@@ -30,10 +30,35 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# ========================================
+# SECURITY - NEVER COMMIT THESE FILES
+# ========================================
+# Environment files with credentials
 .env
+.env.local
 .env*.local
-.env
+.env.production.local
+.env.development.local
+.env.test.local
+
+# Backend environment files
+backend/BackendRedis/.env
+backendIA/.env
+
+# Firebase and service account files
+serviceAccountKey.json
+**/serviceAccountKey.json
+google-services.json
+
+# API Keys and secrets
+*.key
+*.pem
+credentials.json
+*credentials*.json
+
+# ========================================
+# END SECURITY SECTION
+# ========================================
 
 # typescript
 *.tsbuildinfo
