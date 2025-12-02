@@ -48,7 +48,7 @@ export default function Step2Description({ data, updateData }: Props) {
             console.log('🌐 Enviando requisição para IA...');
 
             // Chamar API da IA
-            const response = await fetch('http://10.82.9.180:8000/analyze', {
+            const response = await fetch('http://192.168.0.3:8000/analyze', {
                 method: 'POST',
                 body: formData,
                 // NÃO adicionar Content-Type - o fetch adiciona automaticamente com o boundary correto
