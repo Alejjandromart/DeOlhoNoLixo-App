@@ -5,12 +5,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Feather } from '@expo/vector-icons';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -19,6 +19,7 @@ import {
 import BotaoGoogle from '../../components/SocialButton';
 import CustomInput from '../../components/CustomInputCadastro';
 import CustomCheckbox from '../../components/CustomCheckbox'; // Importar o novo componente
+import CustomModal from '../../components/Shared/CustomModal';
 import type {
   DadosCadastro,
   ErrosValidacao,
@@ -27,6 +28,8 @@ import type {
 } from '../../_types/type';
 import { useAuth } from '../../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 export interface CadastroSheetRef {
   abrir: () => void;
@@ -78,19 +81,47 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
   const [carregando, setCarregando] = useState(false);
   const [erros, setErros] = useState<ErrosValidacao>({});
 
+  // Estado do Modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+
+  const showModal = (title: string, message: string) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalVisible(true);
+  };
+
   const atualizar = useCallback((campo: keyof DadosCadastro, valor: string | boolean) => {
     setDados((prev) => ({ ...prev, [campo]: valor } as DadosCadastro));
     // Limpar erro do campo ao digitar
     setErros((e) => ({ ...e, [campo]: undefined }));
   }, []);
 
-  const emailValido = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  // Validações em tempo real para senha e email
+  const senhaChecks = {
+    length: dados.senha.length >= 8,
+    upper: /[A-Z]/.test(dados.senha),
+    lower: /[a-z]/.test(dados.senha),
+    number: /\d/.test(dados.senha),
+    special: /[!@#$%^&*]/.test(dados.senha),
+  };
+  const senhaAllValid = Object.values(senhaChecks).every(Boolean);
+  const emailAccepted = /^[^\s@]+@gmail\.com$/i.test(dados.email);
+
+  // Validação de email: somente domínios @gmail.com são permitidos
+  const emailValido = (v: string) => /^[^\s@]+@gmail\.com$/i.test(v);
+
+  // Validação de senha: mínimo 8 caracteres, ao menos 1 maiúscula, 1 minúscula, 1 número e 1 caractere especial
+  const senhaValida = (s: string) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/.test(s);
+
   const validar = (d: DadosCadastro): ResultadoValidacao => {
     const e: ErrosValidacao = {};
     if (!d.nomeCompleto.trim()) e.nomeCompleto = 'Informe o nome completo.';
-    if (!emailValido(d.email)) e.email = 'E-mail inválido.';
+    if (!d.email.trim()) e.email = 'Informe o e-mail.';
+    else if (!emailValido(d.email)) e.email = 'E-mail deve ser do domínio @gmail.com.';
     if (!d.nomeUsuario.trim() || d.nomeUsuario.length < 3) e.nomeUsuario = 'Mín. 3 caracteres.';
-    if (d.senha.length < 6) e.senha = 'Mín. 6 caracteres.';
+    if (!senhaValida(d.senha)) e.senha = 'Senha deve ter mín. 8 caracteres e incluir 1 maiúscula, 1 minúscula, 1 número e 1 caractere especial.';
     if (d.confirmarSenha !== d.senha) e.confirmarSenha = 'As senhas não coincidem.';
     if (!d.termosAceitos) e.termos = 'Aceite os termos.';
     return { valido: Object.keys(e).length === 0, erros: e };
@@ -113,7 +144,7 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
       // Cadastrar usuário usando o contexto de autenticação
       // Nota: Firebase Auth cria o usuário apenas com email e senha.
       // Para salvar dados adicionais (nome, username), seria necessário usar Firestore ou updateProfile.
-      const { error } = await signUp(dados.email, dados.senha);
+      const { user, error } = await signUp(dados.email, dados.senha);
 
       if (error) {
         // Se falhar, remove a flag
@@ -121,16 +152,35 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
 
         const errorCode = error.code;
         if (errorCode === 'auth/email-already-in-use') {
-          Alert.alert('Erro', 'Este e-mail já está em uso.');
+          showModal('Erro', 'Este e-mail já está em uso.');
         } else if (errorCode === 'auth/invalid-email') {
-          Alert.alert('Erro', 'E-mail inválido.');
+          showModal('Erro', 'E-mail inválido.');
         } else if (errorCode === 'auth/weak-password') {
-          Alert.alert('Erro', 'A senha é muito fraca.');
+          showModal('Erro', 'A senha é muito fraca.');
+        } else if (errorCode === 'auth/network-request-failed') {
+          showModal('Sem Conexão', 'Verifique sua conexão com a internet e tente novamente.');
         } else {
-          Alert.alert('Erro', 'Falha ao cadastrar. Tente novamente.');
+          showModal('Erro', 'Falha ao cadastrar. Tente novamente.');
           console.error(error);
         }
         return;
+      }
+
+      if (user) {
+        // Salvar dados adicionais no Firestore
+        try {
+          await setDoc(doc(db, 'usuarios', user.uid), {
+            nomeCompleto: dados.nomeCompleto,
+            nomeUsuario: dados.nomeUsuario,
+            email: dados.email,
+            createdAt: new Date().toISOString(),
+            photoURL: null,
+            cidade: 'Itacoatiara',
+          });
+        } catch (firestoreError) {
+          console.error('Erro ao salvar dados no Firestore:', firestoreError);
+          // Não impedir o login, mas talvez avisar ou tentar novamente depois
+        }
       }
 
       // Cadastro bem-sucedido
@@ -140,7 +190,7 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
     } catch (err) {
       // Se der erro inesperado, remove a flag
       await AsyncStorage.removeItem('@isFirstLogin');
-      Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
+      showModal('Erro', 'Falha inesperada. Tente novamente.');
       console.error(err);
     } finally {
       setCarregando(false);
@@ -158,11 +208,11 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
 
       if (error) {
         if (error.code === '7') { // DEVELOPER_ERROR
-          Alert.alert('Erro de Configuração', 'Verifique o webClientId no AuthContext.');
+          showModal('Erro de Configuração', 'Verifique o webClientId no AuthContext.');
         } else if (error.code === '-5') { // SIGN_IN_CANCELLED
           console.log('Cadastro cancelado pelo usuário');
         } else {
-          Alert.alert('Erro', 'Falha ao cadastrar com Google. Tente novamente.');
+          showModal('Erro', 'Falha ao cadastrar com Google. Tente novamente.');
           console.error(error);
         }
       } else {
@@ -172,7 +222,7 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
       }
     } catch (err) {
       console.error('Erro inesperado no Google Cadastro:', err);
-      Alert.alert('Erro', 'Ocorreu um erro inesperado.');
+      showModal('Erro', 'Ocorreu um erro inesperado.');
     } finally {
       setCarregando(false);
     }
@@ -189,6 +239,30 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
       backgroundStyle={{ backgroundColor: 'transparent' }}
       handleIndicatorStyle={{ backgroundColor: '#FFFFFF80', width: 48 }}
     >
+      <CustomModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={modalTitle}
+      >
+        <Text style={{ fontSize: 16, color: '#333', lineHeight: 24 }}>
+          {modalMessage}
+        </Text>
+        <TouchableOpacity
+          style={{
+            marginTop: 20,
+            backgroundColor: '#076653',
+            paddingVertical: 12,
+            borderRadius: 12,
+            alignItems: 'center',
+          }}
+          onPress={() => setModalVisible(false)}
+        >
+          <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>
+            Entendi
+          </Text>
+        </TouchableOpacity>
+      </CustomModal>
+
       {/* Conteúdo do sheet com gradiente e cantos arredondados para parecer o card da imagem */}
       <LinearGradient
         colors={['#076653', '#0E3B34']}
@@ -236,6 +310,11 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
             aoEnviar={() => nomeUsuarioInputRef.current?.focus()}
           />
           {erros.email ? <Text style={styles.erro}>{erros.email}</Text> : null}
+          {!erros.email && dados.email.length > 0 ? (
+            <Text style={[styles.inlineHint, emailAccepted ? styles.hintOk : styles.hintError]}>
+              {emailAccepted ? 'E-mail aceito.' : 'Use um e-mail @gmail.com.'}
+            </Text>
+          ) : null}
 
           <CustomInput
             ref={nomeUsuarioInputRef}
@@ -266,6 +345,29 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
             aoEnviar={() => confirmarSenhaInputRef.current?.focus()}
           />
           {erros.senha ? <Text style={styles.erro}>{erros.senha}</Text> : null}
+
+          <View style={styles.passwordChecklist}>
+            <View style={styles.passwordRow}>
+              <Feather name={senhaChecks.length ? 'check-circle' : 'circle'} size={16} color={senhaChecks.length ? '#34C759' : '#C7C7CC'} />
+              <Text style={styles.passwordHint}>Mín. 8 caracteres</Text>
+            </View>
+            <View style={styles.passwordRow}>
+              <Feather name={senhaChecks.upper ? 'check-circle' : 'circle'} size={16} color={senhaChecks.upper ? '#34C759' : '#C7C7CC'} />
+              <Text style={styles.passwordHint}>Pelo menos 1 letra maiúscula</Text>
+            </View>
+            <View style={styles.passwordRow}>
+              <Feather name={senhaChecks.lower ? 'check-circle' : 'circle'} size={16} color={senhaChecks.lower ? '#34C759' : '#C7C7CC'} />
+              <Text style={styles.passwordHint}>Pelo menos 1 letra minúscula</Text>
+            </View>
+            <View style={styles.passwordRow}>
+              <Feather name={senhaChecks.number ? 'check-circle' : 'circle'} size={16} color={senhaChecks.number ? '#34C759' : '#C7C7CC'} />
+              <Text style={styles.passwordHint}>Pelo menos 1 número</Text>
+            </View>
+            <View style={styles.passwordRow}>
+              <Feather name={senhaChecks.special ? 'check-circle' : 'circle'} size={16} color={senhaChecks.special ? '#34C759' : '#C7C7CC'} />
+              <Text style={styles.passwordHint}>Pelo menos 1 caractere especial (!@#$%^&*)</Text>
+            </View>
+          </View>
 
           <CustomInput
             ref={confirmarSenhaInputRef}
@@ -430,5 +532,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  inlineHint: {
+    fontSize: 12,
+    marginTop: -6,
+    marginBottom: 8,
+    color: '#757575',
+  },
+  hintOk: { color: '#34C759' },
+  hintError: { color: '#FF3B30' },
+  passwordChecklist: {
+    marginTop: 8,
+    marginBottom: 8,
+    paddingLeft: 2,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  passwordHint: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#666',
   },
 });

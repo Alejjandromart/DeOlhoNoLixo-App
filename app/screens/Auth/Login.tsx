@@ -6,7 +6,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +17,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import BotaoGoogle from '../../components/SocialButton';
 import CustomInput from '../../components/CustomInputCadastro';
+import CustomModal from '../../components/Shared/CustomModal';
 import { useAuth } from '../../context/AuthContext';
 
 export interface LoginSheetRef {
@@ -70,6 +70,17 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  // Estado do Modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+
+  const showModal = (title: string, message: string) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalVisible(true);
+  };
+
   const atualizar = useCallback((campo: keyof DadosLogin, valor: string) => {
     setDados((prev) => ({ ...prev, [campo]: valor }));
     // Limpar erros ao digitar
@@ -108,9 +119,11 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
           setEmailError('E-mail ou senha incorretos');
           setPasswordError('E-mail ou senha incorretos');
         } else if (errorCode === 'auth/too-many-requests') {
-          Alert.alert('Erro', 'Muitas tentativas. Tente novamente mais tarde.');
+          showModal('Erro', 'Muitas tentativas. Tente novamente mais tarde.');
+        } else if (errorCode === 'auth/network-request-failed') {
+          showModal('Sem Conexão', 'Verifique sua conexão com a internet e tente novamente.');
         } else {
-          Alert.alert('Erro', 'Falha ao fazer login. Verifique suas credenciais.');
+          showModal('Erro', 'Falha ao fazer login. Verifique suas credenciais.');
           console.error(error);
         }
         setCarregando(false);
@@ -122,7 +135,7 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
       // navigation.navigate('Feed'); // Removido - AuthNavigator cuida disso automaticamente
     } catch (err: any) {
       console.error('Erro no login:', err);
-      Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
+      showModal('Erro', 'Falha inesperada. Tente novamente.');
     } finally {
       setCarregando(false);
     }
@@ -139,12 +152,12 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
 
       if (error) {
         if (error.code === '7') { // DEVELOPER_ERROR usually means configuration issue
-          Alert.alert('Erro de Configuração', 'Verifique o webClientId no AuthContext.');
+          showModal('Erro de Configuração', 'Verifique o webClientId no AuthContext.');
         } else if (error.code === '-5') { // SIGN_IN_CANCELLED
           // User cancelled, do nothing
           console.log('Login cancelado pelo usuário');
         } else {
-          Alert.alert('Erro', 'Falha ao entrar com Google. Tente novamente.');
+          showModal('Erro', 'Falha ao entrar com Google. Tente novamente.');
           console.error(error);
         }
       } else {
@@ -154,7 +167,7 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
       }
     } catch (err) {
       console.error('Erro inesperado no Google Login:', err);
-      Alert.alert('Erro', 'Ocorreu um erro inesperado.');
+      showModal('Erro', 'Ocorreu um erro inesperado.');
     } finally {
       setCarregando(false);
     }
@@ -171,6 +184,30 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
       backgroundStyle={{ backgroundColor: 'transparent' }}
       handleIndicatorStyle={{ backgroundColor: '#FFFFFF80', width: 48 }}
     >
+      <CustomModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={modalTitle}
+      >
+        <Text style={{ fontSize: 16, color: '#333', lineHeight: 24 }}>
+          {modalMessage}
+        </Text>
+        <TouchableOpacity
+          style={{
+            marginTop: 20,
+            backgroundColor: '#076653',
+            paddingVertical: 12,
+            borderRadius: 12,
+            alignItems: 'center',
+          }}
+          onPress={() => setModalVisible(false)}
+        >
+          <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>
+            Entendi
+          </Text>
+        </TouchableOpacity>
+      </CustomModal>
+
       <LinearGradient
         colors={['#076653', '#0E3B34']}
         style={styles.cartao}
