@@ -11,8 +11,6 @@ import ProfileScreen from '../screens/Home/ProfileScreen';
 import AlterarSenhaScreen from '../screens/Home/AlterarSenhaScreen';
 import EsqueciSenha from '../screens/Auth/EsqueciSenha';
 import DenunciaIA from '../screens/DenunciaIA';
-import RealizarDenuncia from '../screens/Denuncia/RealizarDenuncia';
-import DenunciaEnviadaScreen from '../screens/Denuncia/DenunciaEnviadaScreen';
 import { useAuth } from '../context/AuthContext';
 import { DenunciaProvider } from '../context/DenunciaContext';
 import MainTabNavigator from './MainTabNavigator';
@@ -30,14 +28,10 @@ export type RootStackParamList = {
   Tutorial: undefined;
   Permissions: undefined;
   MainTabs: undefined;
-  Feed: undefined;
-  Configuracao: undefined;
   Profile: undefined;
   AlterarSenha: undefined;
   EsqueciSenha: undefined;
   DenunciaIA: undefined;
-  RealizarDenuncia: undefined;
-  DenunciaEnviada: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -108,8 +102,6 @@ const RootStack = () => {
             <Stack.Screen name="AlterarSenha" component={AlterarSenhaScreen} />
             <Stack.Screen name="EsqueciSenha" component={EsqueciSenha} />
             <Stack.Screen name="DenunciaIA" component={DenunciaIA} />
-            <Stack.Screen name="RealizarDenuncia" component={RealizarDenuncia} />
-            <Stack.Screen name="DenunciaEnviada" component={DenunciaEnviadaScreen} />
           </>
         ) : (
           // Usuário não autenticado - Telas de auth

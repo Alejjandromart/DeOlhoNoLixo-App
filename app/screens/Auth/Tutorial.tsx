@@ -388,8 +388,11 @@ const TutorialScreen: React.FC = () => {
     },
   });
 
-  const handleSkip = () => {
-    navigation.replace('MainTabs');
+  const handleSkip = async () => {
+    // Remover flag de primeiro login para não mostrar tutorial novamente
+    await AsyncStorage.removeItem('@isFirstLogin');
+    // Navegar para Permissions ou Feed
+    navigation.replace('Permissions');
   };
 
   const buttonAnimatedStyle = useAnimatedStyle(() => {

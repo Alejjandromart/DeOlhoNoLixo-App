@@ -108,7 +108,11 @@ export default function DenunciaCard({
   };
 
   // Helper para obter cores do status
-  const getStatusColors = (statusText: string) => {
+  const getStatusColors = (statusText: string | undefined) => {
+    if (!statusText) {
+      return { bg: '#F5F5F5', text: '#666' }; // Cinza padrão
+    }
+    
     const statusLower = statusText.toLowerCase();
 
     if (statusLower.includes('pendente') || statusLower.includes('aguardando')) {
