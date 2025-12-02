@@ -36,6 +36,7 @@ interface DenunciaContextData {
   adicionarDenuncia: (denuncia: Omit<Denuncia, 'id' | 'likes' | 'isLiked' | 'tempoAtras' | 'status' | 'comentarios'>) => void;
   curtirDenuncia: (id: number) => void;
   adicionarComentario: (denunciaId: number, texto: string, usuario: { nome: string; avatar?: string }) => void;
+  contarDenunciasMesAtual: (nomeUsuario: string) => number;
 }
 
 const DenunciaContext = createContext<DenunciaContextData | null>(null);
@@ -203,8 +204,23 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
+  const contarDenunciasMesAtual = (nomeUsuario: string): number => {
+    const agora = new Date();
+    const mesAtual = agora.getMonth();
+    const anoAtual = agora.getFullYear();
+
+    return denuncias.filter(d => {
+      const dataDenuncia = new Date(d.timestamp);
+      return (
+        d.usuario.nome.toLowerCase() === nomeUsuario.toLowerCase() &&
+        dataDenuncia.getMonth() === mesAtual &&
+        dataDenuncia.getFullYear() === anoAtual
+      );
+    }).length;
+  };
+
   return (
-    <DenunciaContext.Provider value={{ denuncias, adicionarDenuncia, curtirDenuncia, adicionarComentario }}>
+    <DenunciaContext.Provider value={{ denuncias, adicionarDenuncia, curtirDenuncia, adicionarComentario, contarDenunciasMesAtual }}>
       {children}
     </DenunciaContext.Provider>
   );

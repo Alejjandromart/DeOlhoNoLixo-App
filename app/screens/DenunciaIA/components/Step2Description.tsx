@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, Alert } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ReportData } from '../DenunciaIA';
 import AnalyzingState from './AnalyzingState';
@@ -11,17 +11,94 @@ interface Props {
 
 export default function Step2Description({ data, updateData }: Props) {
     const [isAnalyzing, setIsAnalyzing] = useState(data.description.length === 0);
+    const [hasAnalyzed, setHasAnalyzed] = useState(false);
 
-    const handleAnalysisComplete = () => {
-        updateData({
-            description:
-                'Identificado acúmulo irregular de resíduos mistos em via pública. A análise visual detectou sacos de lixo doméstico rasgados e restos de material de construção (entulho), obstruindo parcialmente a calçada.',
-            aiAnalysis: {
-                severity: 'high',
-                tags: ['Doméstico', 'Entulho', 'Plástico'],
-            },
-        });
-        setIsAnalyzing(false);
+    useEffect(() => {
+        // Chamar IA automaticamente apenas uma vez se não houver descrição
+        if (!hasAnalyzed && data.description.length === 0 && data.photos.length > 0) {
+            setHasAnalyzed(true);
+            handleAnalysisComplete();
+        }
+    }, []);
+
+    const handleAnalysisComplete = async () => {
+        try {
+            console.log('🤖 Iniciando análise da IA...');
+            console.log('📸 Imagens:', data.photos);
+            console.log('📍 Coordenadas:', data.coordinates);
+
+            const formData = new FormData();
+            
+            // Adicionar todas as imagens
+            for (let i = 0; i < data.photos.length; i++) {
+                const photoUri = data.photos[i];
+                formData.append('files', {
+                    uri: photoUri,
+                    type: 'image/jpeg',
+                    name: `image_${i}.jpg`,
+                } as any);
+            }
+
+            // Adicionar coordenadas se disponível
+            if (data.coordinates) {
+                formData.append('latitude', data.coordinates.lat.toString());
+                formData.append('longitude', data.coordinates.lng.toString());
+            }
+
+            console.log('🌐 Enviando requisição para IA...');
+
+            // Chamar API da IA
+            const response = await fetch('http://10.82.9.180:8000/analyze', {
+                method: 'POST',
+                body: formData,
+                // NÃO adicionar Content-Type - o fetch adiciona automaticamente com o boundary correto
+            });
+
+            console.log('📡 Resposta da IA - Status:', response.status);
+
+            if (response.ok) {
+                const aiAnalysis = await response.json();
+                console.log('✅ Análise da IA concluída:', JSON.stringify(aiAnalysis, null, 2));
+
+                // Atualizar apenas uma vez com a descrição da IA
+                const aiDescription = aiAnalysis.suggestedDescription || 'Denúncia registrada';
+                console.log('📝 Definindo descrição da IA:', aiDescription);
+                
+                updateData({
+                    description: aiDescription,
+                    aiAnalysis: {
+                        severity: aiAnalysis.severity || 'medium',
+                        tags: aiAnalysis.objectsDetected || [],
+                    },
+                });
+                
+                setHasAnalyzed(true);
+            } else {
+                console.error('❌ Erro na API da IA');
+                // Usar valores padrão em caso de erro
+                updateData({
+                    description: 'Denúncia registrada. Por favor, adicione mais detalhes.',
+                    aiAnalysis: {
+                        severity: 'medium',
+                        tags: ['Geral'],
+                    },
+                });
+                setHasAnalyzed(true);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao analisar com IA:', error);
+            // Usar valores padrão em caso de erro
+            updateData({
+                description: 'Denúncia registrada. Por favor, adicione mais detalhes.',
+                aiAnalysis: {
+                    severity: 'medium',
+                    tags: ['Geral'],
+                },
+            });
+            setHasAnalyzed(true);
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     if (isAnalyzing) {

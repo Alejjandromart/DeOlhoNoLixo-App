@@ -38,6 +38,8 @@ export default function ImageCarousel({ imagens, onIndexChange, width = SCREEN_W
             key={index} 
             source={{ uri }} 
             style={[styles.image, { width }]} 
+            onError={(e) => console.error('❌ Erro ao carregar imagem:', index, e.nativeEvent.error)}
+            onLoad={() => console.log('✅ Imagem carregada:', index)}
           />
         ))}
       </ScrollView>

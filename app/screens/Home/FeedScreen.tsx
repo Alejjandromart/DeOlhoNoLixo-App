@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { useDenuncias } from '../../context/DenunciaContext';
 import { useNavigation } from '@react-navigation/native';
 import BottomTabBar from '../../components/BottomTabBar';
 import DenunciaCard from '../../components/Feed/DenunciaCard';
+import { getFeedDenuncias, FeedDenuncia } from '../../services/feedService';
 
 const FeedScreen: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -22,9 +23,11 @@ const FeedScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [filterOption, setFilterOption] = useState<'recente' | 'proximo'>('recente');
+  const [feedDenuncias, setFeedDenuncias] = useState<any[]>([]);
+  const [useFeedService, setUseFeedService] = useState(true);
   const insets = useSafeAreaInsets();
 
-  const denuncias = denunciaContext?.denuncias || [];
+  const denuncias = useFeedService ? feedDenuncias : (denunciaContext?.denuncias || []);
   const curtirDenuncia = denunciaContext?.curtirDenuncia || ((id: number) => { });
   const adicionarComentario = denunciaContext?.adicionarComentario || ((denunciaId: number, texto: string, usuario: any) => { });
 
@@ -50,6 +53,63 @@ const FeedScreen: React.FC = () => {
     console.log('✅ adicionarComentario chamado');
   };
 
+  // Carrega denúncias do BackendRedis ao montar o componente
+  useEffect(() => {
+    loadFeedFromBackend();
+  }, []);
+
+  const loadFeedFromBackend = async () => {
+    try {
+      console.log('🔄 Carregando feed do BackendRedis...');
+      const data = await getFeedDenuncias();
+      
+      // Converte do formato FeedDenuncia para o formato do Context
+      const converted = data.map((item: FeedDenuncia, index: number) => {
+        const timestamp = new Date(item.timestamp);
+        const now = new Date();
+        const diffMs = now.getTime() - timestamp.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        let tempoAtras = 'Agora';
+        if (diffMins < 1) tempoAtras = 'Agora';
+        else if (diffMins < 60) tempoAtras = `${diffMins} min atrás`;
+        else if (diffHours < 24) tempoAtras = `${diffHours}h atrás`;
+        else tempoAtras = `${diffDays}d atrás`;
+        
+        console.log('📸 Imagens recebidas:', item.images?.length || 0, 'primeira:', item.images?.[0]?.substring(0, 50));
+        
+        return {
+          id: index + 1,
+          usuario: {
+            nome: item.userId?.split('@')[0] || 'Usuário',
+            avatar: undefined,
+          },
+          imagens: item.images || [],
+          descricao: item.description,
+          localizacao: item.geographicContext,
+          latitude: item.location?.latitude,
+          longitude: item.location?.longitude,
+          tipos: [item.category],
+          timestamp: timestamp,
+          tempoAtras: tempoAtras,
+          status: 'Pendente',
+          likes: 0,
+          comentarios: [],
+          curtida: false,
+          isLiked: false,
+        };
+      });
+      
+      setFeedDenuncias(converted);
+      console.log(`✅ ${converted.length} denúncias carregadas do feed`);
+    } catch (error) {
+      console.warn('⚠️ Erro ao carregar feed, usando dados locais:', error);
+      setUseFeedService(false); // Fallback para Context local
+    }
+  };
+
   const handleLogout = async () => {
     await signOut();
     navigation.navigate('Welcome');
@@ -57,10 +117,8 @@ const FeedScreen: React.FC = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Simula carregamento de dados
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
+    await loadFeedFromBackend();
+    setRefreshing(false);
   };
 
   const userName = user?.email?.split('@')[0] || 'Usuário';
