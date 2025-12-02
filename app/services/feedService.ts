@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const FEED_API_URL = 'http://192.168.0.3:8001';
+const FEED_API_URL = 'http://10.82.9.180:8001';
 const API_KEY = 'secure-api-key-12345';
 
 export interface FeedDenuncia {

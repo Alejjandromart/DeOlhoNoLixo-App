@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '../../context/AuthContext';
 import { useDenuncias } from '../../context/DenunciaContext';
 import { addDenunciaToFeed, FeedDenuncia } from '../../services/feedService';
@@ -143,6 +144,22 @@ export default function DenunciaIA() {
 
             // 1. Enviar ao BackendRedis (feed com cache)
             try {
+                // Converter imagens para Base64 para serem acessíveis em outros dispositivos
+                const imagesBase64 = await Promise.all(
+                    reportData.photos.map(async (photoUri) => {
+                        try {
+                            const base64 = await FileSystem.readAsStringAsync(photoUri, {
+                                encoding: 'base64',
+                            });
+                            console.log('✅ Imagem convertida para Base64, tamanho:', base64.length);
+                            return `data:image/jpeg;base64,${base64}`;
+                        } catch (error) {
+                            console.warn('⚠️ Erro ao converter imagem para Base64:', error);
+                            return photoUri; // Fallback para URI original
+                        }
+                    })
+                );
+
                 const feedDenuncia: FeedDenuncia = {
                     id: reportData.id,
                     description: reportData.description || 'Denúncia registrada pela análise inteligente.',
@@ -151,7 +168,7 @@ export default function DenunciaIA() {
                     severity: reportData.aiAnalysis?.severity || 'Média',
                     geographicContext: reportData.location || 'Localização não especificada',
                     environmentalImpact: reportData.description || 'Impacto não especificado',
-                    images: reportData.photos,
+                    images: imagesBase64, // Usando imagens em Base64
                     location: reportData.coordinates ? {
                         latitude: reportData.coordinates.lat,
                         longitude: reportData.coordinates.lng,
@@ -193,9 +210,9 @@ export default function DenunciaIA() {
                 formData.append('usuario', user.email || 'Anônimo');
                 formData.append('categoria', reportData.category || 'ambiental');
                 
-                console.log('🌐 Enviando para:', 'http://192.168.0.3:8000/analyze-and-notify');
+                console.log('🌐 Enviando para:', 'http://10.82.9.180:8000/analyze-and-notify');
                 
-                const notifyResponse = await fetch('http://192.168.0.3:8000/analyze-and-notify', {
+                const notifyResponse = await fetch('http://10.82.9.180:8000/analyze-and-notify', {
                     method: 'POST',
                     body: formData,
                 });
