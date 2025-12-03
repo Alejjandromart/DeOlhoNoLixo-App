@@ -26,7 +26,7 @@ export default function ImageCarousel({ imagens, onIndexChange, width = SCREEN_W
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        style={{ width, height: 280 }}
+        style={{ width, height: 320 }}
         contentContainerStyle={{ width: width * imagens.length }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
@@ -67,8 +67,8 @@ const styles = StyleSheet.create({
     height: 320,
     backgroundColor: '#F5F5F5',
     overflow: 'hidden',
-    borderRadius: 24,
-    marginHorizontal: 16,
+    borderRadius: 0,
+    marginHorizontal: 0,
     marginTop: 0,
   },
   image: {

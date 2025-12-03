@@ -27,18 +27,8 @@ const getStatusColors = (statusText: string) => {
 };
 
 export default function InfoSection({ localizacao, status, latitude, longitude }: InfoSectionProps) {
-  const statusColors = getStatusColors(status);
-
   return (
     <View style={styles.container}>
-      {/* Status Badge */}
-      <View style={styles.statusContainer}>
-        <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-          <Ionicons name="checkmark-circle" size={18} color={statusColors.icon} />
-          <Text style={[styles.statusText, { color: statusColors.text }]}>{status}</Text>
-        </View>
-      </View>
-
       {/* Localização */}
       <View style={styles.locationContainer}>
         <View style={styles.iconContainer}>
@@ -55,23 +45,6 @@ export default function InfoSection({ localizacao, status, latitude, longitude }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 8,
-  },
-  statusText: {
-    fontWeight: '700',
-    fontSize: 14,
-    textTransform: 'uppercase',
   },
   locationContainer: {
     flexDirection: 'row',

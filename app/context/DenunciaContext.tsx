@@ -37,13 +37,24 @@ export interface Denuncia {
   comentarios: Comentario[];
 }
 
+export interface FiltrosDenuncia {
+  status?: string[];
+  tipos?: string[];
+  dataInicio?: Date;
+  dataFim?: Date;
+}
+
 interface DenunciaContextData {
   denuncias: Denuncia[];
+  denunciasFiltradas: Denuncia[];
+  filtrosAtivos: FiltrosDenuncia;
   isLoading: boolean;
   adicionarDenuncia: (denuncia: Omit<Denuncia, 'id' | 'likes' | 'isLiked' | 'tempoAtras' | 'status' | 'comentarios'>) => Promise<void>;
   curtirDenuncia: (id: number) => void;
   adicionarComentario: (denunciaId: number, texto: string, usuario: { nome: string; avatar?: string }) => void;
   contarDenunciasMesAtual: (nomeUsuario: string) => number;
+  filtrarDenuncias: (filtros: FiltrosDenuncia) => void;
+  limparFiltros: () => void;
 }
 
 const DenunciaContext = createContext<DenunciaContextData | null>(null);
@@ -147,6 +158,8 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
   // Se Firebase está habilitado, inicia vazio e aguarda sync
   // Se Firebase está desabilitado, usa MOCK_DENUNCIAS
   const [denuncias, setDenuncias] = useState<Denuncia[]>(USE_FIREBASE ? [] : MOCK_DENUNCIAS);
+  const [denunciasFiltradas, setDenunciasFiltradas] = useState<Denuncia[]>([]);
+  const [filtrosAtivos, setFiltrosAtivos] = useState<FiltrosDenuncia>({});
   const [isLoading, setIsLoading] = useState(USE_FIREBASE); // Só loading se usar Firebase
 
   // Carrega denúncias do Firebase imediatamente ao montar
@@ -360,8 +373,65 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
     }).length;
   };
 
+  const filtrarDenuncias = (filtros: FiltrosDenuncia) => {
+    setFiltrosAtivos(filtros);
+    
+    let resultado = [...denuncias];
+
+    // Filtro por status
+    if (filtros.status && filtros.status.length > 0) {
+      resultado = resultado.filter(d => 
+        filtros.status!.some(s => d.status.toLowerCase().includes(s.toLowerCase()))
+      );
+    }
+
+    // Filtro por tipo de resíduo
+    if (filtros.tipos && filtros.tipos.length > 0) {
+      resultado = resultado.filter(d => 
+        d.tipos && d.tipos.some(t => 
+          filtros.tipos!.some(ft => t.toLowerCase().includes(ft.toLowerCase()))
+        )
+      );
+    }
+
+    // Filtro por data
+    if (filtros.dataInicio) {
+      resultado = resultado.filter(d => d.timestamp >= filtros.dataInicio!);
+    }
+    if (filtros.dataFim) {
+      resultado = resultado.filter(d => d.timestamp <= filtros.dataFim!);
+    }
+
+    setDenunciasFiltradas(resultado);
+  };
+
+  const limparFiltros = () => {
+    setFiltrosAtivos({});
+    setDenunciasFiltradas(denuncias);
+  };
+
+  // Atualiza denúncias filtradas quando denúncias mudam
+  useEffect(() => {
+    if (Object.keys(filtrosAtivos).length > 0) {
+      filtrarDenuncias(filtrosAtivos);
+    } else {
+      setDenunciasFiltradas(denuncias);
+    }
+  }, [denuncias]);
+
   return (
-    <DenunciaContext.Provider value={{ denuncias, isLoading, adicionarDenuncia, curtirDenuncia, adicionarComentario, contarDenunciasMesAtual }}>
+    <DenunciaContext.Provider value={{ 
+      denuncias, 
+      denunciasFiltradas, 
+      filtrosAtivos, 
+      isLoading, 
+      adicionarDenuncia, 
+      curtirDenuncia, 
+      adicionarComentario, 
+      contarDenunciasMesAtual,
+      filtrarDenuncias,
+      limparFiltros
+    }}>
       {children}
     </DenunciaContext.Provider>
   );

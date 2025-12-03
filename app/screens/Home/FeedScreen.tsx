@@ -14,30 +14,38 @@ import { useDenuncias } from '../../context/DenunciaContext';
 import { useNavigation } from '@react-navigation/native';
 import BottomTabBar from '../../components/BottomTabBar';
 import DenunciaCard from '../../components/Feed/DenunciaCard';
+import FilterModal from '../../components/Feed/FilterModal';
 import { getFeedDenuncias, FeedDenuncia } from '../../services/feedService';
+import { FiltrosDenuncia } from '../../context/DenunciaContext';
 
 const FeedScreen: React.FC = () => {
   const { user, signOut } = useAuth();
   const denunciaContext = useDenuncias();
   const navigation = useNavigation<any>();
   const [refreshing, setRefreshing] = useState(false);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [filterOption, setFilterOption] = useState<'recente' | 'proximo'>('recente');
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const [feedDenuncias, setFeedDenuncias] = useState<any[]>([]);
   const [useFeedService, setUseFeedService] = useState(false); // FALSE = usa Firebase Context
   const insets = useSafeAreaInsets();
 
-  // Sempre usa denúncias do Firebase Context
-  const denuncias = denunciaContext?.denuncias || [];
+  // Usa denúncias filtradas se houver filtros ativos, senão usa todas
+  const todasDenuncias = denunciaContext?.denuncias || [];
+  const denunciasFiltradas = denunciaContext?.denunciasFiltradas || [];
+  const filtrosAtivos = denunciaContext?.filtrosAtivos || {};
+  const temFiltros = Object.keys(filtrosAtivos).length > 0;
+  const denuncias = temFiltros ? denunciasFiltradas : todasDenuncias;
   const isInitialLoad = denunciaContext?.isLoading ?? true;
   
   console.log(`📊 FeedScreen: ${denuncias.length} denúncias (loading: ${isInitialLoad})`);
   const curtirDenuncia = denunciaContext?.curtirDenuncia || ((id: number) => { });
   const adicionarComentario = denunciaContext?.adicionarComentario || ((denunciaId: number, texto: string, usuario: any) => { });
 
-  const handleFilterSelect = (option: 'recente' | 'proximo') => {
-    setFilterOption(option);
-    setShowFilterMenu(false);
+  const handleApplyFilters = (filtros: FiltrosDenuncia) => {
+    denunciaContext?.filtrarDenuncias(filtros);
+  };
+
+  const handleClearFilters = () => {
+    denunciaContext?.limparFiltros();
   };
 
   const handleAddComment = (denunciaId: number, texto: string) => {
@@ -159,46 +167,20 @@ const FeedScreen: React.FC = () => {
                 </View>
                 <Text style={styles.subtitle}>Olá, {userName}</Text>
               </View>
-              <TouchableOpacity
-                onPress={() => setShowFilterMenu(!showFilterMenu)}
-                style={styles.filterButton}
-              >
-                <Ionicons name="options-outline" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Menu de Filtro */}
-            {showFilterMenu && (
-              <View style={styles.filterMenu}>
+              <View style={styles.headerButtons}>
                 <TouchableOpacity
-                  style={[styles.filterOption, filterOption === 'recente' && styles.filterOptionActive]}
-                  onPress={() => handleFilterSelect('recente')}
+                  onPress={() => setShowFilterModal(true)}
+                  style={[styles.filterButton, temFiltros && styles.filterButtonActive]}
                 >
-                  <Ionicons
-                    name="time-outline"
-                    size={20}
-                    color={filterOption === 'recente' ? '#0A7D6F' : '#666'}
+                  <Ionicons 
+                    name="options-outline" 
+                    size={24} 
+                    color={temFiltros ? "#0A7D6F" : "#333"} 
                   />
-                  <Text style={[styles.filterText, filterOption === 'recente' && styles.filterTextActive]}>
-                    Mais Recente
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.filterOption, filterOption === 'proximo' && styles.filterOptionActive]}
-                  onPress={() => handleFilterSelect('proximo')}
-                >
-                  <Ionicons
-                    name="map-outline"
-                    size={20}
-                    color={filterOption === 'proximo' ? '#0A7D6F' : '#666'}
-                  />
-                  <Text style={[styles.filterText, filterOption === 'proximo' && styles.filterTextActive]}>
-                    Mais Próximo
-                  </Text>
+                  {temFiltros && <View style={styles.filterBadge} />}
                 </TouchableOpacity>
               </View>
-            )}
-
+            </View>
 
             {isInitialLoad ? (
               <View style={styles.emptyState}>
@@ -245,6 +227,14 @@ const FeedScreen: React.FC = () => {
           </View>
         </ScrollView>
       </View>
+
+      {/* Modal de Filtros Avançados */}
+      <FilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={handleApplyFilters}
+        filtrosAtuais={filtrosAtivos}
+      />
     </View>
   );
 };
@@ -293,6 +283,10 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: 'space-between',
   },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   filterButton: {
     padding: 8,
     backgroundColor: '#FFFFFF',
@@ -302,6 +296,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    position: 'relative',
+  },
+  filterButtonActive: {
+    backgroundColor: '#E8F5E9',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#0A7D6F',
   },
   filterMenu: {
     backgroundColor: '#FFFFFF',
@@ -314,25 +321,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-  },
-  filterOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    gap: 12,
-  },
-  filterOptionActive: {
-    backgroundColor: '#E8F5E9',
-  },
-  filterText: {
-    fontSize: 15,
-    color: '#666',
-    fontWeight: '500',
-  },
-  filterTextActive: {
-    color: '#0A7D6F',
-    fontWeight: '600',
   },
   feedCards: {
     gap: 0,

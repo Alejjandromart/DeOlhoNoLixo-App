@@ -120,16 +120,16 @@ export default function DenunciaCard({
     const statusLower = statusText.toLowerCase();
 
     if (statusLower.includes('pendente') || statusLower.includes('aguardando')) {
-      return { bg: '#FFF3E0', text: '#E65100' }; // Laranja
-    } else if (statusLower.includes('em andamento') || statusLower.includes('processando')) {
-      return { bg: '#E3F2FD', text: '#1565C0' }; // Azul
+      return { bg: '#FFF3E0', text: '#E65100', icon: '#F57C00' }; // Laranja
+    } else if (statusLower.includes('em andamento') || statusLower.includes('processando') || statusLower.includes('análise')) {
+      return { bg: '#E3F2FD', text: '#1565C0', icon: '#1976D2' }; // Azul
     } else if (statusLower.includes('resolvido') || statusLower.includes('concluído')) {
-      return { bg: '#E8F5E9', text: '#2E7D32' }; // Verde
+      return { bg: '#E8F5E9', text: '#2E7D32', icon: '#388E3C' }; // Verde
     } else if (statusLower.includes('cancelado') || statusLower.includes('rejeitado')) {
-      return { bg: '#FFEBEE', text: '#C62828' }; // Vermelho
+      return { bg: '#FFEBEE', text: '#C62828', icon: '#D32F2F' }; // Vermelho
     }
 
-    return { bg: '#F5F5F5', text: '#616161' }; // Cinza padrão
+    return { bg: '#F5F5F5', text: '#616161', icon: '#757575' }; // Cinza padrão
   };
 
   const statusColors = getStatusColors(status);
@@ -258,7 +258,27 @@ export default function DenunciaCard({
               {/* Info do Usuário */}
               <ExpandedUserInfo usuario={usuario} tempoAtras={tempoAtras} />
 
-              {/* Informações de Localização e Status */}
+              <View style={styles.divider} />
+
+              {/* Descrição Completa */}
+              <DescriptionSection descricao={descricao} />
+
+              <View style={styles.divider} />
+
+              {/* Status Badge */}
+              <View style={styles.statusSection}>
+                <View style={[styles.statusBadgeExpanded, { backgroundColor: statusColors.bg }]}>
+                  <Ionicons name="checkmark-circle" size={18} color={statusColors.icon} />
+                  <Text style={[styles.statusTextExpanded, { color: statusColors.text }]}>{status}</Text>
+                </View>
+              </View>
+
+              {/* Tags de Tipos de Lixo */}
+              <TagsList tipos={tipos} />
+
+              <View style={styles.divider} />
+
+              {/* Informações de Localização */}
               <InfoSection
                 localizacao={localizacao}
                 status={status}
@@ -266,13 +286,7 @@ export default function DenunciaCard({
                 longitude={longitude}
               />
 
-              {/* Tags de Tipos de Lixo */}
-              <TagsList tipos={tipos} />
-
               <View style={styles.divider} />
-
-              {/* Descrição Completa */}
-              <DescriptionSection descricao={descricao} />
 
               <View style={styles.divider} />
 
@@ -469,6 +483,23 @@ const styles = StyleSheet.create({
   },
   expandedBody: {
     padding: 16,
+  },
+  statusSection: {
+    marginBottom: 16,
+  },
+  statusBadgeExpanded: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 8,
+    alignSelf: 'flex-start',
+  },
+  statusTextExpanded: {
+    fontWeight: '700',
+    fontSize: 14,
+    textTransform: 'uppercase',
   },
   absoluteCloseButton: {
     position: 'absolute',
