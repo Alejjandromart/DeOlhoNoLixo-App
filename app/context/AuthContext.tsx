@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log(`✅ Login concluído com sucesso em ${Date.now() - start}ms`);
       return { error: null };
     } catch (error: any) {
-      console.error(`❌ Erro no login após ${Date.now() - start}ms:`, error);
+      console.log(`⚠️ Falha no login após ${Date.now() - start}ms`);
       return { error };
     }
   };

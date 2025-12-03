@@ -175,13 +175,6 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = ouvirDenuncias((denunciasFirebase) => {
       console.log(`📊 ${denunciasFirebase.length} denúncias recebidas do Firestore`);
       
-      // DEBUG: Ver comentários de cada denúncia
-      denunciasFirebase.forEach((doc, idx) => {
-        if (doc.comentarios && doc.comentarios.length > 0) {
-          console.log(`📝 Denúncia ${idx + 1} tem ${doc.comentarios.length} comentários:`, doc.comentarios);
-        }
-      });
-      
       if (denunciasFirebase.length > 0) {
         const denunciasConvertidas = converterDenunciasFirebase(denunciasFirebase);
         

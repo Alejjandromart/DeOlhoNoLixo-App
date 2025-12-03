@@ -37,9 +37,8 @@ const FeedScreen: React.FC = () => {
   const filtrosAtivos = denunciaContext?.filtrosAtivos || {};
   const temFiltros = Object.keys(filtrosAtivos).length > 0;
   const denuncias = temFiltros ? denunciasFiltradas : todasDenuncias;
-  const isInitialLoad = denunciaContext?.isLoading ?? true;
   
-  console.log(`📊 FeedScreen: ${denuncias.length} denúncias (loading: ${isInitialLoad})`);
+  console.log(`📊 FeedScreen: ${denuncias.length} denúncias`);
   const curtirDenuncia = denunciaContext?.curtirDenuncia || ((id: number) => { });
   const adicionarComentario = denunciaContext?.adicionarComentario || ((denunciaId: number, texto: string, usuario: any) => { });
 
@@ -217,15 +216,7 @@ const FeedScreen: React.FC = () => {
               </View>
             </View>
 
-            {isInitialLoad ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="hourglass-outline" size={64} color="#0A7D6F" />
-                <Text style={styles.emptyTitle}>Carregando denúncias...</Text>
-                <Text style={styles.emptyText}>
-                  Sincronizando com o Firebase
-                </Text>
-              </View>
-            ) : denuncias.length === 0 ? (
+            {denuncias.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="newspaper-outline" size={64} color="#999" />
                 <Text style={styles.emptyTitle}>Nenhuma denúncia ainda</Text>

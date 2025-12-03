@@ -3,10 +3,10 @@ import { Platform } from 'react-native';
 
 // Para Android Emulator use 10.0.2.2, para iOS Simulator use localhost, para dispositivo físico use seu IP local
 const getBaseUrl = () => {
-  const backendUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL || 'http://localhost:8000';
+  const backendUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL || 'http://192.168.145.236:8001';
   
   if (Platform.OS === 'android' && backendUrl.includes('localhost')) {
-    return 'http://10.0.2.2:8000';
+    return 'http://10.0.2.2:8001';
   }
   return backendUrl;
 };

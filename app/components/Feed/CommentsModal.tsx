@@ -78,7 +78,6 @@ export default function CommentsModal({ visible, onClose, comentarios, onAddComm
                         ) : (
                             <>
                                 {comentarios.map((comentario, index) => {
-                                    console.log(`🔍 Renderizando comentário ${index}:`, comentario);
                                     return (
                                         <View key={comentario.id || index} style={styles.commentItem}>
                                             <View style={styles.commentAvatar}>
