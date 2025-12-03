@@ -91,6 +91,9 @@ export default function DenunciaCard({
   };
 
   const handleOpenComments = () => {
+    console.log('🎈 Abrindo modal de comentários');
+    console.log('📊 Quantidade de comentários:', comentarios?.length || 0);
+    console.log('💬 Comentários:', comentarios);
     setCommentsModalVisible(true);
     onComment?.();
   };
@@ -207,6 +210,9 @@ export default function DenunciaCard({
 
         <TouchableOpacity style={styles.actionButton} onPress={handleOpenComments}>
           <Ionicons name="chatbubble-outline" size={24} color="#666" />
+          {comentarios && comentarios.length > 0 && (
+            <Text style={styles.actionText}>{comentarios.length}</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={handleShare}>

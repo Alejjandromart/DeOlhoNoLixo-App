@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { USE_FIREBASE } from '../config/firebaseEnabled';
-import { ouvirDenuncias, buscarDenuncias, criarDenuncia as criarDenunciaFirebase, curtirDenuncia as curtirDenunciaFirebase, descurtirDenuncia as descurtirDenunciaFirebase, DenunciaFirebase } from '../services/denuncias';
-import { auth } from '../lib/firebase';
+import { ouvirDenuncias, buscarDenuncias, criarDenuncia as criarDenunciaFirebase, curtirDenuncia as curtirDenunciaFirebase, descurtirDenuncia as descurtirDenunciaFirebase, adicionarComentario as adicionarComentarioFirebase, DenunciaFirebase } from '../services/denuncias';
+import { auth, db } from '../lib/firebase';
 import { enviarFoto } from '../services/storage';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, doc, getDoc } from 'firebase/firestore';
 
 export interface Comentario {
   id: number;
@@ -175,6 +175,13 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = ouvirDenuncias((denunciasFirebase) => {
       console.log(`📊 ${denunciasFirebase.length} denúncias recebidas do Firestore`);
       
+      // DEBUG: Ver comentários de cada denúncia
+      denunciasFirebase.forEach((doc, idx) => {
+        if (doc.comentarios && doc.comentarios.length > 0) {
+          console.log(`📝 Denúncia ${idx + 1} tem ${doc.comentarios.length} comentários:`, doc.comentarios);
+        }
+      });
+      
       if (denunciasFirebase.length > 0) {
         const denunciasConvertidas = converterDenunciasFirebase(denunciasFirebase);
         
@@ -214,8 +221,8 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
         id: index + 1,
         firestoreId: doc.id,
         usuario: {
-          nome: doc.usuarioEmail?.split('@')[0] || 'Usuário',
-          avatar: undefined,
+          nome: doc.usuarioNome || doc.usuarioEmail?.split('@')[0] || 'Usuário',
+          avatar: doc.usuarioAvatar || null,
         },
         localizacao: doc.localizacao || 'Localização não informada',
         status: doc.status || 'Pendente',
@@ -228,7 +235,16 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
         longitude: doc.longitude,
         tipos: doc.tipos,
         timestamp,
-        comentarios: [],
+        comentarios: doc.comentarios ? doc.comentarios.map((com: any) => {
+          const comentarioTimestamp = com.timestamp instanceof Timestamp ? com.timestamp.toDate() : new Date();
+          return {
+            id: typeof com.id === 'number' ? com.id : parseInt(com.id, 10),
+            usuario: com.usuario || { nome: 'Usuário', avatar: null },
+            texto: com.texto || '',
+            tempoAtras: calcularTempoAtras(comentarioTimestamp),
+            timestamp: comentarioTimestamp,
+          };
+        }) : [],
       };
       
       return denuncia;
@@ -283,6 +299,23 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
           }
         }
 
+        // Busca dados do usuário do Firestore
+        let usuarioNome = denuncia.usuario.nome;
+        let usuarioAvatar: string | null = null;
+        
+        if (auth?.currentUser?.uid) {
+          try {
+            const userDoc = await getDoc(doc(db, 'usuarios', auth.currentUser.uid));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              usuarioNome = userData.nomeUsuario || userData.nomeCompleto || auth.currentUser.email?.split('@')[0] || 'Usuário';
+              usuarioAvatar = userData.photoURL || null;
+            }
+          } catch (error) {
+            console.warn('⚠️ Não foi possível buscar dados do usuário:', error);
+          }
+        }
+
         const dadosFirebase: DenunciaFirebase = {
           descricao: denuncia.descricao,
           fotoURL: fotosURLs,
@@ -291,7 +324,10 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
           longitude: denuncia.longitude,
           tipos: denuncia.tipos,
           status: denuncia.status,
-          usuarioEmail: denuncia.usuario.nome, // TODO: usar email real do AuthContext
+          usuarioID: auth?.currentUser?.uid,
+          usuarioEmail: auth?.currentUser?.email || undefined,
+          usuarioNome,
+          usuarioAvatar,
           curtidas: 0,
         };
 
@@ -337,25 +373,58 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  const adicionarComentario = (denunciaId: number, texto: string, usuario: { nome: string; avatar?: string }) => {
-    const novoComentario: Comentario = {
-      id: Date.now(),
-      usuario,
-      texto,
-      tempoAtras: 'agora mesmo',
-      timestamp: new Date(),
-    };
+  const adicionarComentario = async (denunciaId: number, texto: string, usuario: { nome: string; avatar?: string }) => {
+    console.log('🔧 DenunciaContext: adicionarComentario chamado');
+    console.log('📋 DenunciaId:', denunciaId);
+    console.log('💭 Texto:', texto);
+    console.log('👤 Usuario:', usuario);
 
-    setDenuncias(prev =>
-      prev.map(d =>
-        d.id === denunciaId
-          ? {
-              ...d,
-              comentarios: [...d.comentarios, novoComentario],
-            }
-          : d
-      )
-    );
+    if (!USE_FIREBASE) {
+      // Modo offline - apenas atualiza estado local
+      const novoComentario: Comentario = {
+        id: Date.now(),
+        usuario,
+        texto,
+        tempoAtras: 'agora mesmo',
+        timestamp: new Date(),
+      };
+
+      setDenuncias(prev =>
+        prev.map(d =>
+          d.id === denunciaId
+            ? {
+                ...d,
+                comentarios: [...d.comentarios, novoComentario],
+              }
+            : d
+        )
+      );
+      return;
+    }
+
+    // Modo Firebase - salva no Firestore
+    try {
+      const denuncia = denuncias.find(d => d.id === denunciaId);
+      if (!denuncia || !denuncia.firestoreId) {
+        console.error('❌ Denúncia não encontrada ou sem ID do Firestore');
+        return;
+      }
+
+      const userId = auth?.currentUser?.uid || 'unknown';
+      console.log('🔥 Salvando comentário no Firebase...');
+
+      await adicionarComentarioFirebase(denuncia.firestoreId, {
+        texto,
+        userId,
+        userName: usuario.nome,
+        userAvatar: usuario.avatar || null,
+      });
+
+      console.log('✅ Comentário salvo no Firebase!');
+      // O listener do Firebase atualizará automaticamente o estado
+    } catch (error) {
+      console.error('❌ Erro ao adicionar comentário:', error);
+    }
   };
 
   const contarDenunciasMesAtual = (nomeUsuario: string): number => {

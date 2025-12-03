@@ -234,10 +234,11 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
       snapPoints={pontos}
       backdropComponent={renderBackdrop}
       enablePanDownToClose={false}
-      keyboardBehavior="extend"
+      keyboardBehavior="interactive"
       android_keyboardInputMode="adjustResize"
       backgroundStyle={{ backgroundColor: 'transparent' }}
       handleIndicatorStyle={{ backgroundColor: '#FFFFFF80', width: 48 }}
+      enableDynamicSizing={false}
     >
       <CustomModal
         visible={modalVisible}
@@ -280,6 +281,7 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
         <BottomSheetScrollView
           contentContainerStyle={styles.conteudo}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.boasVindas}>Bom ter você aqui</Text>
 
@@ -468,7 +470,7 @@ const styles = StyleSheet.create({
   },
   conteudo: {
     paddingHorizontal: 18,
-    paddingBottom: 40,
+    paddingBottom: 120,
     flexGrow: 1,
   },
   boasVindas: {

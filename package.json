@@ -60,6 +60,7 @@
     "@types/react": "~19.1.0",
     "@types/styled-components-react-native": "^5.2.5",
     "babel-preset-expo": "^54.0.6",
+    "baseline-browser-mapping": "^2.8.32",
     "dotenv": "^17.2.3",
     "expo-module-scripts": "^5.0.7",
     "react-test-renderer": "19.1.0",

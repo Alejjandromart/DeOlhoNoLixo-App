@@ -26,6 +26,8 @@ export type DenunciaFirebase = {
     status?: string;
     usuarioID?: string;
     usuarioEmail?: string;
+    usuarioNome?: string;
+    usuarioAvatar?: string | null;
     curtidas?: number;
     curtidasUsers?: string[]; // Lista de IDs dos usuários que curtiram
     avaliacaoIA?: {
@@ -156,6 +158,51 @@ export async function descurtirDenuncia(denunciaId: string, userId?: string): Pr
         console.log('✅ Denúncia descurtida com sucesso:', denunciaId);
     } catch (error) {
         console.error('❌ Erro ao descurtir denúncia:', error);
+        throw error;
+    }
+}
+
+/**
+ * Adiciona um comentário a uma denúncia
+ * @param denunciaId - ID da denúncia
+ * @param comentario - Dados do comentário
+ * @returns Promise<void>
+ */
+export async function adicionarComentario(
+    denunciaId: string,
+    comentario: {
+        texto: string;
+        userId: string;
+        userName: string;
+        userAvatar?: string | null;
+    }
+): Promise<void> {
+    if (!db) {
+        throw new Error('Firestore não está inicializado.');
+    }
+
+    try {
+        const denunciaRef = doc(db, 'denuncias', denunciaId);
+        
+        const novoComentario = {
+            id: Date.now().toString(),
+            texto: comentario.texto,
+            userId: comentario.userId,
+            usuario: {
+                nome: comentario.userName,
+                avatar: comentario.userAvatar || null,
+            },
+            timestamp: Timestamp.now(),
+            tempoAtras: 'Agora',
+        };
+
+        await updateDoc(denunciaRef, {
+            comentarios: arrayUnion(novoComentario)
+        });
+
+        console.log('✅ Comentário adicionado com sucesso:', denunciaId);
+    } catch (error) {
+        console.error('❌ Erro ao adicionar comentário:', error);
         throw error;
     }
 }

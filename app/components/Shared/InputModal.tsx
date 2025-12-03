@@ -10,6 +10,7 @@ interface InputModalProps {
   onCancel: () => void;
   onSubmit: (value: string) => void;
   submitLabel?: string;
+  secureTextEntry?: boolean;
 }
 
 export default function InputModal({
@@ -20,6 +21,7 @@ export default function InputModal({
   onCancel,
   onSubmit,
   submitLabel = 'Adicionar',
+  secureTextEntry = false,
 }: InputModalProps) {
   const [value, setValue] = useState(initialValue);
 
@@ -36,6 +38,7 @@ export default function InputModal({
         value={value}
         onChangeText={setValue}
         autoFocus
+        secureTextEntry={secureTextEntry}
       />
 
       <View style={styles.actions}>

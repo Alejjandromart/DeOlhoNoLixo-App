@@ -9,8 +9,10 @@ import { RootStackParamList } from '../../navigation/RootStack';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissionPreferences } from '../../hooks/usePermissionPreferences';
 import ConfirmationModal from '../../components/ConfirmationModal';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import InputModal from '../../components/Shared/InputModal';
+import { doc, getDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { db, auth } from '../../lib/firebase';
+import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import * as Location from 'expo-location';
 import { Camera, useCameraPermissions } from 'expo-camera';
 import * as Linking from 'expo-linking';
@@ -30,8 +32,10 @@ const ConfiguracaoScreen = () => {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [userData, setUserData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [toast, setToast] = useState<ToastProps>({ message: '', type: 'success', visible: false });
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
@@ -47,7 +51,7 @@ const ConfiguracaoScreen = () => {
       } catch (error) {
         console.error("Erro ao buscar dados do usuário:", error);
       } finally {
-        setLoading(false);
+        setInitialLoading(false);
       }
     }
   }, [user]);
@@ -117,9 +121,46 @@ const ConfiguracaoScreen = () => {
     await signOut();
   };
 
-  const handleDeleteAccount = () => {
-    // TODO: Implement delete account logic
-    console.log("Delete account confirmed");
+  const handleDeleteAccountConfirm = () => {
+    setDeleteModalVisible(false);
+    setPasswordModalVisible(true);
+  };
+
+  const handleDeleteAccount = async (password: string) => {
+    if (!user || !user.email) return;
+    
+    setPasswordModalVisible(false);
+    setLoading(true);
+
+    try {
+      // 1. Reautenticar com senha
+      const credential = EmailAuthProvider.credential(user.email, password);
+      await reauthenticateWithCredential(user, credential);
+
+      // 2. Deletar documento do usuário no Firestore
+      await deleteDoc(doc(db, 'usuarios', user.uid));
+
+      // 3. Deletar conta do Firebase Authentication
+      await deleteUser(user);
+
+      // 4. Fazer logout (já limpa o AsyncStorage)
+      await signOut();
+      
+      showToast('Conta excluída com sucesso', 'success');
+    } catch (error: any) {
+      console.error("Erro ao excluir conta:", error);
+      
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        showToast('Senha incorreta. Tente novamente.', 'error');
+        setPasswordModalVisible(true); // Reabre o modal
+      } else if (error.code === 'auth/too-many-requests') {
+        showToast('Muitas tentativas. Aguarde alguns minutos.', 'error');
+      } else {
+        showToast('Erro ao excluir conta. Tente novamente.', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -139,7 +180,7 @@ const ConfiguracaoScreen = () => {
             style={styles.profileGradient}
           >
             <Image
-              source={(userData?.photoURL || user?.photoURL) ? { uri: userData?.photoURL || user?.photoURL } : require('../../assets/images/CAPI.png')}
+              source={(userData?.photoURL || user?.photoURL) ? { uri: userData?.photoURL || user?.photoURL } : require('../../assets/images/CAPI.jpeg')}
               style={styles.profileImage}
             />
             <View style={styles.profileInfo}>
@@ -245,11 +286,21 @@ const ConfiguracaoScreen = () => {
       <ConfirmationModal
         visible={deleteModalVisible}
         onClose={() => setDeleteModalVisible(false)}
-        onConfirm={handleDeleteAccount}
+        onConfirm={handleDeleteAccountConfirm}
         title="Excluir Conta"
-        message="Esta ação é irreversível. Todos os seus dados serão permanentemente excluídos."
-        confirmText="Excluir Permanentemente"
+        message="Esta ação é irreversível. Sua conta será excluída, mas suas denúncias e comentários permanecerão no sistema."
+        confirmText="Continuar"
         type="danger"
+      />
+
+      <InputModal
+        visible={passwordModalVisible}
+        title="Confirme sua Senha"
+        placeholder="Digite sua senha"
+        onCancel={() => setPasswordModalVisible(false)}
+        onSubmit={handleDeleteAccount}
+        submitLabel="Excluir Conta"
+        secureTextEntry={true}
       />
 
       {/* Modern Toast Notification */}
@@ -265,6 +316,17 @@ const ConfiguracaoScreen = () => {
             <Text style={styles.toastMessage}>{toast.message}</Text>
           </View>
         </Animated.View>
+      )}
+
+      {/* Loading Overlay durante exclusão */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color="#076653" />
+            <Text style={styles.loadingText}>Excluindo conta...</Text>
+            <Text style={styles.loadingSubtext}>Por favor, aguarde</Text>
+          </View>
+        </View>
       )}
     </View>
   );
@@ -420,6 +482,40 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     flex: 1,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingBox: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1C1C1E',
+  },
+  loadingSubtext: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#8E8E93',
   },
 });
 

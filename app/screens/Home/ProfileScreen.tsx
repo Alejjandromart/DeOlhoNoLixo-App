@@ -37,13 +37,32 @@ const ProfileScreen = () => {
         if (user?.uid) {
           const docRef = doc(db, 'usuarios', user.uid);
           const docSnap = await getDoc(docRef);
+          
           if (docSnap.exists()) {
+            // Dados existem no Firestore - usar eles
             const data = docSnap.data();
             setNomeCompleto(data.nomeCompleto || user.displayName || '');
             setNomeUsuario(data.nomeUsuario || '');
             setEmail(data.email || user.email || '');
             setCidade(data.cidade || '');
             setPhotoURL(data.photoURL || user.photoURL);
+          } else {
+            // Primeiro acesso - usar dados do Firebase Auth
+            setNomeCompleto(user.displayName || '');
+            setNomeUsuario(user.email?.split('@')[0] || '');
+            setEmail(user.email || '');
+            setCidade('Itacoatiara'); // Cidade padrão
+            setPhotoURL(user.photoURL);
+            
+            // Criar documento inicial no Firestore
+            await setDoc(docRef, {
+              nomeCompleto: user.displayName || '',
+              nomeUsuario: user.email?.split('@')[0] || '',
+              email: user.email || '',
+              cidade: 'Itacoatiara',
+              photoURL: user.photoURL || null,
+              criadoEm: new Date().toISOString()
+            });
           }
         } else {
           // Se não houver usuário autenticado, resetar campos
@@ -55,6 +74,13 @@ const ProfileScreen = () => {
         }
       } catch (error) {
         console.error("Erro ao buscar dados:", error);
+        // Em caso de erro, ainda tenta usar dados do Auth
+        if (user) {
+          setNomeCompleto(user.displayName || '');
+          setNomeUsuario(user.email?.split('@')[0] || '');
+          setEmail(user.email || '');
+          setPhotoURL(user.photoURL);
+        }
       } finally {
         // Sempre desliga o carregamento inicial após a tentativa
         setInitialLoading(false);
@@ -203,7 +229,7 @@ const ProfileScreen = () => {
               </View>
             ) : (
               <Image
-                source={photoURL ? { uri: photoURL } : require('../../assets/images/CAPI.png')}
+                source={photoURL ? { uri: photoURL } : require('../../assets/images/CAPI.jpeg')}
                 style={styles.profileImage}
               />
             )}

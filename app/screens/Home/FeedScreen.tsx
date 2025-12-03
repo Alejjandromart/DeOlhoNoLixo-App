@@ -17,6 +17,8 @@ import DenunciaCard from '../../components/Feed/DenunciaCard';
 import FilterModal from '../../components/Feed/FilterModal';
 import { getFeedDenuncias, FeedDenuncia } from '../../services/feedService';
 import { FiltrosDenuncia } from '../../context/DenunciaContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 const FeedScreen: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -26,6 +28,7 @@ const FeedScreen: React.FC = () => {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [feedDenuncias, setFeedDenuncias] = useState<any[]>([]);
   const [useFeedService, setUseFeedService] = useState(false); // FALSE = usa Firebase Context
+  const [userName, setUserName] = useState(user?.displayName || user?.email?.split('@')[0] || 'Usuário');
   const insets = useSafeAreaInsets();
 
   // Usa denúncias filtradas se houver filtros ativos, senão usa todas
@@ -40,6 +43,24 @@ const FeedScreen: React.FC = () => {
   const curtirDenuncia = denunciaContext?.curtirDenuncia || ((id: number) => { });
   const adicionarComentario = denunciaContext?.adicionarComentario || ((denunciaId: number, texto: string, usuario: any) => { });
 
+  useEffect(() => {
+    const fetchUserName = async () => {
+      if (user?.uid) {
+        try {
+          const docRef = doc(db, 'usuarios', user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setUserName(data.nomeUsuario || user.displayName || user.email?.split('@')[0] || 'Usuário');
+          }
+        } catch (error) {
+          console.log("Erro ao buscar nome do usuário:", error);
+        }
+      }
+    };
+    fetchUserName();
+  }, [user]);
+
   const handleApplyFilters = (filtros: FiltrosDenuncia) => {
     denunciaContext?.filtrarDenuncias(filtros);
   };
@@ -48,16 +69,32 @@ const FeedScreen: React.FC = () => {
     denunciaContext?.limparFiltros();
   };
 
-  const handleAddComment = (denunciaId: number, texto: string) => {
+  const handleAddComment = async (denunciaId: number, texto: string) => {
     console.log('🔵 FeedScreen handleAddComment chamado');
     console.log('📋 DenunciaId:', denunciaId);
     console.log('💭 Texto:', texto);
     console.log('👤 User email:', user?.email);
 
-    const usuario = {
+    // Busca dados do usuário do Firestore
+    let usuario = {
       nome: user?.email?.split('@')[0] || 'Usuário',
-      avatar: undefined,
+      avatar: undefined as string | undefined,
     };
+
+    if (user?.uid) {
+      try {
+        const userDoc = await getDoc(doc(db, 'usuarios', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          usuario = {
+            nome: userData.nomeUsuario || userData.nomeCompleto || usuario.nome,
+            avatar: userData.photoURL || undefined,
+          };
+        }
+      } catch (error) {
+        console.warn('⚠️ Não foi possível buscar avatar do usuário:', error);
+      }
+    }
 
     console.log('👤 Usuario criado:', usuario);
     console.log('🔧 Chamando adicionarComentario...');
@@ -138,8 +175,6 @@ const FeedScreen: React.FC = () => {
     await new Promise(resolve => setTimeout(resolve, 500));
     setRefreshing(false);
   };
-
-  const userName = user?.email?.split('@')[0] || 'Usuário';
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
