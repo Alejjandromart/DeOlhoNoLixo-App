@@ -1,4 +1,9 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { USE_FIREBASE } from '../config/firebaseEnabled';
+import { ouvirDenuncias, buscarDenuncias, criarDenuncia as criarDenunciaFirebase, curtirDenuncia as curtirDenunciaFirebase, descurtirDenuncia as descurtirDenunciaFirebase, DenunciaFirebase } from '../services/denuncias';
+import { auth } from '../lib/firebase';
+import { enviarFoto } from '../services/storage';
+import { Timestamp } from 'firebase/firestore';
 
 export interface Comentario {
   id: number;
@@ -13,6 +18,7 @@ export interface Comentario {
 
 export interface Denuncia {
   id: number;
+  firestoreId?: string; // ID do documento no Firestore
   usuario: {
     nome: string;
     avatar?: string;
@@ -33,7 +39,8 @@ export interface Denuncia {
 
 interface DenunciaContextData {
   denuncias: Denuncia[];
-  adicionarDenuncia: (denuncia: Omit<Denuncia, 'id' | 'likes' | 'isLiked' | 'tempoAtras' | 'status' | 'comentarios'>) => void;
+  isLoading: boolean;
+  adicionarDenuncia: (denuncia: Omit<Denuncia, 'id' | 'likes' | 'isLiked' | 'tempoAtras' | 'status' | 'comentarios'>) => Promise<void>;
   curtirDenuncia: (id: number) => void;
   adicionarComentario: (denunciaId: number, texto: string, usuario: { nome: string; avatar?: string }) => void;
   contarDenunciasMesAtual: (nomeUsuario: string) => number;
@@ -137,7 +144,83 @@ const MOCK_DENUNCIAS: Denuncia[] = [
 ];
 
 export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
-  const [denuncias, setDenuncias] = useState<Denuncia[]>(MOCK_DENUNCIAS);
+  // Se Firebase está habilitado, inicia vazio e aguarda sync
+  // Se Firebase está desabilitado, usa MOCK_DENUNCIAS
+  const [denuncias, setDenuncias] = useState<Denuncia[]>(USE_FIREBASE ? [] : MOCK_DENUNCIAS);
+  const [isLoading, setIsLoading] = useState(USE_FIREBASE); // Só loading se usar Firebase
+
+  // Carrega denúncias do Firebase imediatamente ao montar
+  useEffect(() => {
+    if (!USE_FIREBASE) {
+      console.log('ℹ️ Firebase desabilitado, usando apenas Context local');
+      return;
+    }
+
+    console.log('🔥 Iniciando listener do Firebase Firestore...');
+    
+    // Listener é chamado imediatamente com dados atuais + escuta mudanças
+    const unsubscribe = ouvirDenuncias((denunciasFirebase) => {
+      console.log(`📊 ${denunciasFirebase.length} denúncias recebidas do Firestore`);
+      
+      if (denunciasFirebase.length > 0) {
+        const denunciasConvertidas = converterDenunciasFirebase(denunciasFirebase);
+        
+        setDenuncias(prev => {
+          return denunciasConvertidas.map(newD => {
+            // Tenta encontrar a denúncia anterior pelo ID do Firestore para preservar o like local
+            const oldD = prev.find(p => p.firestoreId && p.firestoreId === newD.firestoreId);
+            if (oldD) {
+              return { ...newD, isLiked: oldD.isLiked };
+            }
+            return newD;
+          });
+        });
+
+        setIsLoading(false); // Dados carregados!
+        console.log(`✅ ${denunciasConvertidas.length} denúncias carregadas no Context`);
+      } else {
+        console.log('⚠️ Nenhuma denúncia encontrada no Firestore');
+        setIsLoading(false); // Mesmo sem dados, marca como carregado
+      }
+    });
+
+    return () => {
+      console.log('🔥 Desconectando listener do Firebase');
+      unsubscribe();
+    };
+  }, []);
+
+  // Função auxiliar para converter denúncias do Firestore
+  const converterDenunciasFirebase = (denunciasFirebase: any[]): Denuncia[] => {
+    return denunciasFirebase.map((doc, index) => {
+      const timestamp = doc.created_at instanceof Timestamp 
+        ? doc.created_at.toDate() 
+        : new Date();
+      
+      const denuncia = {
+        id: index + 1,
+        firestoreId: doc.id,
+        usuario: {
+          nome: doc.usuarioEmail?.split('@')[0] || 'Usuário',
+          avatar: undefined,
+        },
+        localizacao: doc.localizacao || 'Localização não informada',
+        status: doc.status || 'Pendente',
+        tempoAtras: calcularTempoAtras(timestamp),
+        descricao: doc.descricao || '',
+        imagens: Array.isArray(doc.fotoURL) ? doc.fotoURL : doc.fotoURL ? [doc.fotoURL] : [],
+        likes: doc.curtidas || 0,
+        isLiked: (doc.curtidasUsers && auth?.currentUser?.uid) ? doc.curtidasUsers.includes(auth.currentUser.uid) : false,
+        latitude: doc.latitude,
+        longitude: doc.longitude,
+        tipos: doc.tipos,
+        timestamp,
+        comentarios: [],
+      };
+      
+      return denuncia;
+    });
+  };
 
   const calcularTempoAtras = (timestamp: Date): string => {
     const agora = new Date();
@@ -155,7 +238,7 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
     return `${Math.floor(dias / 30)} mês${Math.floor(dias / 30) > 1 ? 'es' : ''}`;
   };
 
-  const adicionarDenuncia = (novaDenuncia: Omit<Denuncia, 'id' | 'likes' | 'isLiked' | 'tempoAtras' | 'status' | 'comentarios'>) => {
+  const adicionarDenuncia = async (novaDenuncia: Omit<Denuncia, 'id' | 'likes' | 'isLiked' | 'tempoAtras' | 'status' | 'comentarios'>) => {
     const denuncia: Denuncia = {
       ...novaDenuncia,
       id: Date.now(),
@@ -166,20 +249,78 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
       comentarios: [],
     };
 
+    // Adiciona localmente sempre (funciona com ou sem Firebase)
     setDenuncias(prev => [denuncia, ...prev]);
+
+    // Se Firebase estiver habilitado, também salva lá
+    if (USE_FIREBASE) {
+      try {
+        console.log('🔥 Salvando denúncia no Firestore...');
+        
+        // Upload das imagens para Firebase Storage
+        const fotosURLs: string[] = [];
+        for (const imagemUri of denuncia.imagens) {
+          if (imagemUri.startsWith('http')) {
+            // Se já for URL, usa direto
+            fotosURLs.push(imagemUri);
+          } else {
+            // Se for URI local, faz upload
+            const url = await enviarFoto(imagemUri);
+            fotosURLs.push(url);
+          }
+        }
+
+        const dadosFirebase: DenunciaFirebase = {
+          descricao: denuncia.descricao,
+          fotoURL: fotosURLs,
+          localizacao: denuncia.localizacao,
+          latitude: denuncia.latitude,
+          longitude: denuncia.longitude,
+          tipos: denuncia.tipos,
+          status: denuncia.status,
+          usuarioEmail: denuncia.usuario.nome, // TODO: usar email real do AuthContext
+          curtidas: 0,
+        };
+
+        const docId = await criarDenunciaFirebase(dadosFirebase);
+        console.log('✅ Denúncia salva no Firestore com ID:', docId);
+
+        // Atualiza a denúncia local com o ID do Firestore para permitir interações imediatas
+        setDenuncias(prev => prev.map(d => 
+            d.id === denuncia.id ? { ...d, firestoreId: docId } : d
+        ));
+      } catch (error) {
+        console.error('❌ Erro ao salvar no Firebase (continuando apenas localmente):', error);
+      }
+    }
   };
 
   const curtirDenuncia = (id: number) => {
     setDenuncias(prev =>
-      prev.map(d =>
-        d.id === id
-          ? {
-              ...d,
-              isLiked: !d.isLiked,
-              likes: d.isLiked ? d.likes - 1 : d.likes + 1,
+      prev.map(d => {
+        if (d.id === id) {
+          const isLiking = !d.isLiked;
+          
+          // Se tiver ID do Firestore, atualiza lá também
+          if (USE_FIREBASE && d.firestoreId) {
+            const uid = auth?.currentUser?.uid;
+            console.log(`👍 Tentando ${isLiking ? 'curtir' : 'descurtir'} denúncia ${d.firestoreId} (User: ${uid || 'Anônimo'})`);
+            
+            if (isLiking) {
+              curtirDenunciaFirebase(d.firestoreId, uid).catch(err => console.error('❌ Erro ao curtir no Firebase:', err));
+            } else {
+              descurtirDenunciaFirebase(d.firestoreId, uid).catch(err => console.error('❌ Erro ao descurtir no Firebase:', err));
             }
-          : d
-      )
+          }
+
+          return {
+            ...d,
+            isLiked: isLiking,
+            likes: isLiking ? d.likes + 1 : d.likes - 1,
+          };
+        }
+        return d;
+      })
     );
   };
 
@@ -220,7 +361,7 @@ export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <DenunciaContext.Provider value={{ denuncias, adicionarDenuncia, curtirDenuncia, adicionarComentario, contarDenunciasMesAtual }}>
+    <DenunciaContext.Provider value={{ denuncias, isLoading, adicionarDenuncia, curtirDenuncia, adicionarComentario, contarDenunciasMesAtual }}>
       {children}
     </DenunciaContext.Provider>
   );

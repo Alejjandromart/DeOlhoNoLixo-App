@@ -78,11 +78,29 @@ def get_feed_denuncias() -> List[Dict[str, Any]]:
 def add_denuncia_to_feed(denuncia: Dict[str, Any]) -> None:
     """
     Adiciona uma nova denúncia ao feed.
-    Atualiza cache Redis e memória.
+    Atualiza cache Redis, memória e Firebase (se disponível).
     """
+    from app.database import db, firebase_available
+    
     print(f"➕ Adicionando denúncia ao feed: {denuncia.get('id', 'sem-id')}")
     
-    # 1. Adiciona ao cache em memória
+    # 1. Salva no Firebase/Firestore (fonte da verdade)
+    if firebase_available and db:
+        try:
+            # Remove 'id' se existir (Firestore gera automaticamente)
+            denuncia_data = {k: v for k, v in denuncia.items() if k != 'id'}
+            
+            # Adiciona timestamp se não existir
+            if 'created_at' not in denuncia_data:
+                from google.cloud.firestore import SERVER_TIMESTAMP
+                denuncia_data['created_at'] = SERVER_TIMESTAMP
+            
+            doc_ref = db.collection('denuncias').add(denuncia_data)
+            print(f"✅ Denúncia salva no Firestore com ID: {doc_ref[1].id}")
+        except Exception as e:
+            print(f"⚠️ Erro ao salvar no Firestore: {e}")
+    
+    # 2. Adiciona ao cache em memória
     if _memory_cache["data"] is None:
         _memory_cache["data"] = []
     
@@ -93,7 +111,7 @@ def add_denuncia_to_feed(denuncia: Dict[str, Any]) -> None:
     _memory_cache["data"] = _memory_cache["data"][:10]
     _memory_cache["timestamp"] = datetime.now()
     
-    # 2. Atualiza Redis se disponível
+    # 3. Atualiza Redis se disponível
     if redis_available and redis_client:
         try:
             # Adiciona no início da lista Redis

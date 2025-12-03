@@ -24,10 +24,14 @@ const FeedScreen: React.FC = () => {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [filterOption, setFilterOption] = useState<'recente' | 'proximo'>('recente');
   const [feedDenuncias, setFeedDenuncias] = useState<any[]>([]);
-  const [useFeedService, setUseFeedService] = useState(true);
+  const [useFeedService, setUseFeedService] = useState(false); // FALSE = usa Firebase Context
   const insets = useSafeAreaInsets();
 
-  const denuncias = useFeedService ? feedDenuncias : (denunciaContext?.denuncias || []);
+  // Sempre usa denúncias do Firebase Context
+  const denuncias = denunciaContext?.denuncias || [];
+  const isInitialLoad = denunciaContext?.isLoading ?? true;
+  
+  console.log(`📊 FeedScreen: ${denuncias.length} denúncias (loading: ${isInitialLoad})`);
   const curtirDenuncia = denunciaContext?.curtirDenuncia || ((id: number) => { });
   const adicionarComentario = denunciaContext?.adicionarComentario || ((denunciaId: number, texto: string, usuario: any) => { });
 
@@ -53,14 +57,17 @@ const FeedScreen: React.FC = () => {
     console.log('✅ adicionarComentario chamado');
   };
 
-  // Carrega denúncias do BackendRedis ao montar o componente
-  useEffect(() => {
-    loadFeedFromBackend();
-  }, []);
+  // Firebase já sincroniza automaticamente via DenunciaContext
+  // Comentado para evitar conflito com Firebase Firestore
+  // useEffect(() => {
+  //   loadFeedFromBackend();
+  // }, []);
 
+  // BackendRedis desabilitado - Firebase sincroniza via Context
   const loadFeedFromBackend = async () => {
     try {
-      console.log('🔄 Carregando feed do BackendRedis...');
+      console.log('ℹ️ Usando denúncias do Firebase Context (BackendRedis desabilitado)');
+      return; // Não faz nada, apenas para compatibilidade
       const data = await getFeedDenuncias();
       
       // Converte do formato FeedDenuncia para o formato do Context
@@ -117,7 +124,10 @@ const FeedScreen: React.FC = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadFeedFromBackend();
+    // Firebase já sincroniza automaticamente via listener
+    console.log('🔄 Refresh: denúncias do Firebase Context');
+    // Pequeno delay para feedback visual
+    await new Promise(resolve => setTimeout(resolve, 500));
     setRefreshing(false);
   };
 
@@ -190,7 +200,15 @@ const FeedScreen: React.FC = () => {
             )}
 
 
-            {denuncias.length === 0 ? (
+            {isInitialLoad ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="hourglass-outline" size={64} color="#0A7D6F" />
+                <Text style={styles.emptyTitle}>Carregando denúncias...</Text>
+                <Text style={styles.emptyText}>
+                  Sincronizando com o Firebase
+                </Text>
+              </View>
+            ) : denuncias.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="newspaper-outline" size={64} color="#999" />
                 <Text style={styles.emptyTitle}>Nenhuma denúncia ainda</Text>

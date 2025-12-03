@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
-    REDIS_TTL: int = 60  # segundos
-    REDIS_PASSWORD: str = "DeOlhoNoLixoSecure2024!"
+    REDIS_TTL: int = 600  # segundos (10 minutos)
+    REDIS_PASSWORD: str = ""  # Sem senha para desenvolvimento local
 
     # Configuração do Firebase
     FIREBASE_CREDENTIALS_PATH: str = "serviceAccountKey.json"

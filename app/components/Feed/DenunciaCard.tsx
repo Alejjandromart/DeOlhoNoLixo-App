@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Modal, Share, Platform, StatusBar } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import LikeExplosion from '../LikeExplosion';
@@ -62,6 +62,10 @@ export default function DenunciaCard({
   const [showLikeExplosion, setShowLikeExplosion] = useState(false);
   const [localIsLiked, setLocalIsLiked] = useState(isLiked);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
+
+  useEffect(() => {
+    setLocalIsLiked(isLiked);
+  }, [isLiked]);
 
   const handleCardPress = () => {
     setExpanded(true);

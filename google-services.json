@@ -14,7 +14,7 @@
       },
       "oauth_client": [
         {
-          "client_id": "27306055437-dk7ec1otbnimuj1n04d08f6dprg4r0tm.apps.googleusercontent.com",
+          "client_id": "27306055437-du37c6gaftc4dbnb0igsmfvs5e989nv4.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "DeOlho.NoLixo.app",
@@ -22,16 +22,20 @@
           }
         },
         {
-          "client_id": "27306055437-lrs52il6nh3v6biba60tmcqrr9mtuu2f.apps.googleusercontent.com",
+          "client_id": "27306055437-jvj63m03atidr87q6j6vv4kbq487kq0j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "DeOlho.NoLixo.app",
+            "certificate_hash": "abe48f35ed0c9159471c6346af4f9660a1c0eb49"
+          }
+        },
+        {
+          "client_id": "27306055437-qqa8jcbdmgja3n515oj73bjs0okufdig.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "DeOlho.NoLixo.app",
             "certificate_hash": "18db41379ef5df5942fa64c6fb766ff215c85438"
           }
-        },
-        {
-          "client_id": "27306055437-f16dqr5ibt1i3hkjpp8ou6jc9i7adpud.apps.googleusercontent.com",
-          "client_type": 3
         }
       ],
       "api_key": [
@@ -41,12 +45,7 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "27306055437-f16dqr5ibt1i3hkjpp8ou6jc9i7adpud.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

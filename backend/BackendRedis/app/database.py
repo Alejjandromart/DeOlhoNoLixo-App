@@ -9,14 +9,21 @@ redis_client = None
 redis_available = False
 
 try:
-    redis_client = redis.Redis(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
-        db=settings.REDIS_DB,
-        password=settings.REDIS_PASSWORD,
-        decode_responses=True,
-        socket_connect_timeout=2  # Timeout rápido
-    )
+    # Configuração do Redis (sem senha se vazio)
+    redis_config = {
+        'host': settings.REDIS_HOST,
+        'port': settings.REDIS_PORT,
+        'db': settings.REDIS_DB,
+        'decode_responses': True,
+        'socket_connect_timeout': 2
+    }
+    
+    # Só adiciona password se não for vazio
+    if settings.REDIS_PASSWORD:
+        redis_config['password'] = settings.REDIS_PASSWORD
+    
+    redis_client = redis.Redis(**redis_config)
+    
     # Testa conexão
     redis_client.ping()
     redis_available = True
@@ -26,17 +33,49 @@ except Exception as e:
     redis_client = None
     redis_available = False
 
-# Inicialização do Firebase (desabilitado - usando Supabase no app)
+# Inicialização do Firebase/Firestore
 db = None
 firebase_available = False
 
-print("ℹ️ Firebase/Firestore desabilitado. Backend em modo standalone.")
-print("ℹ️ Use Supabase no app React Native para persistência.")
+try:
+    # Busca serviceAccountKey.json na raiz do BackendRedis
+    cred_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), settings.FIREBASE_CREDENTIALS_PATH)
+    
+    if os.path.exists(cred_path):
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        firebase_available = True
+        print("✅ Firebase/Firestore conectado com sucesso.")
+    else:
+        print(f"⚠️ Arquivo {cred_path} não encontrado. Firebase desabilitado.")
+except Exception as e:
+    print(f"⚠️ Firebase não disponível ({e}). Backend em modo standalone.")
+    db = None
+    firebase_available = False
 
 def get_recent_denuncias_from_db(limit: int = 10):
     """
-    Busca as denúncias mais recentes.
-    Modo standalone: retorna lista vazia (dados virão do app via API POST).
+    Busca as denúncias mais recentes do Firestore.
+    Retorna lista vazia se Firebase não estiver disponível.
     """
-    print("ℹ️ get_recent_denuncias_from_db: modo standalone (sem Firebase)")
-    return []
+    if not firebase_available or not db:
+        print("ℹ️ get_recent_denuncias_from_db: Firebase não disponível")
+        return []
+    
+    try:
+        print(f"🔍 Buscando últimas {limit} denúncias do Firestore...")
+        denuncias_ref = db.collection('denuncias').order_by('created_at', direction=firestore.Query.DESCENDING).limit(limit)
+        docs = denuncias_ref.stream()
+        
+        denuncias = []
+        for doc in docs:
+            data = doc.to_dict()
+            data['id'] = doc.id
+            denuncias.append(data)
+        
+        print(f"✅ {len(denuncias)} denúncias carregadas do Firestore")
+        return denuncias
+    except Exception as e:
+        print(f"❌ Erro ao buscar denúncias do Firestore: {e}")
+        return []
