@@ -1,47 +1,65 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { initializeApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+// @ts-ignore
 import { getAuth, initializeAuth, getReactNativePersistence, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
-import { USE_FIREBASE } from '../config/firebaseEnabled';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
+// Firebase configuration from environment variables
+console.log('📌 Loading Firebase config from environment variables...');
 const firebaseConfig = {
-    apiKey: process.env.FIREBASE_API_KEY ?? 'AIzaSyCxEmH_N1qy2QrSypdAqgSeRu7V-vJH-Mk',
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN ?? 'deolho-app.firebaseapp.com',
-    projectId: process.env.FIREBASE_PROJECT_ID ?? 'deolho-app',
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET ?? 'deolho-app.firebasestorage.app',
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID ?? '27306055437',
-    appId: process.env.FIREBASE_APP_ID ?? '1:27306055437:android:e07ac09545764adbed0244'
+    apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY?.trim(),
+    authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim(),
+    projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID?.trim(),
+    storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim(),
+    messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?.trim(),
+    appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID?.trim(),
 };
 
-let app: FirebaseApp | null = null;
-let auth: Auth | null = null;
-let db: Firestore | null = null;
-let storage: FirebaseStorage | null = null;
+// Debug: Log config values (without sensitive data)
+console.log('🔍 Firebase Config:', {
+    apiKey: firebaseConfig.apiKey ? `✓ Loaded (${firebaseConfig.apiKey.substring(0, 6)}...)` : '✗ MISSING',
+    authDomain: firebaseConfig.authDomain || '✗ MISSING',
+    projectId: firebaseConfig.projectId || '✗ MISSING',
+    storageBucket: firebaseConfig.storageBucket || '✗ MISSING',
+    messagingSenderId: firebaseConfig.messagingSenderId || '✗ MISSING',
+    appId: firebaseConfig.appId || '✗ MISSING',
+});
 
-if (USE_FIREBASE) {
-    console.log('🔥 Initializing Firebase...');
+// Initialize Firebase - Check if app already exists to prevent duplicate-app error
+console.log('🔥 Initializing Firebase...');
+let app;
+if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
     console.log('✅ Firebase app initialized');
+} else {
+    app = getApp();
+    console.log('✅ Firebase app already exists, using existing instance');
+}
 
+// Initialize Firestore and Storage
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Initialize Auth with AsyncStorage persistence for React Native
+let auth: Auth;
+try {
+    console.log('🔐 Initializing Firebase Auth with AsyncStorage persistence...');
     try {
-        console.log('🔐 Initializing Firebase Auth with AsyncStorage persistence...');
+        // Prefer initializeAuth so we can provide React Native AsyncStorage persistence
         auth = initializeAuth(app, {
             persistence: getReactNativePersistence(AsyncStorage)
         });
         console.log('✅ Firebase Auth initialized with AsyncStorage persistence');
-    } catch (error) {
-        console.error('❌ Error initializing auth with persistence, falling back to getAuth:', error);
+    } catch (innerError) {
+        // initializeAuth may fail if Auth was already initialized or not supported in the environment
+        console.warn('⚠️ initializeAuth failed, falling back to getAuth:', innerError);
         auth = getAuth(app);
         console.log('✅ Firebase Auth initialized with getAuth');
     }
-
-    db = getFirestore(app);
-    storage = getStorage(app);
-    console.log('✅ Firestore and Storage initialized');
-} else {
-    console.log('ℹ️ Firebase disabled (USE_FIREBASE = false)');
+} catch (error) {
+    console.error('❌ Error initializing auth:', error);
+    auth = getAuth(app);
 }
 
 export { auth, db, storage };
-export default app;

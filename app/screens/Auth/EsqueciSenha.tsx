@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +18,7 @@ import {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import CustomInput from '../../components/CustomInputCadastro';
+import CustomModal from '../../components/Shared/CustomModal';
 import { auth } from '../../lib/firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
 
@@ -75,6 +75,28 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
     const [carregando, setCarregando] = useState(false);
     const [emailError, setEmailError] = useState('');
     const [emailEnviado, setEmailEnviado] = useState(false);
+    const emailAccepted = /^[^\s@]+@gmail\.com$/i.test(email);
+
+    // Estado do Modal
+    const [modalVisible, setModalVisible] = useState(false);
+    const [modalTitle, setModalTitle] = useState('');
+    const [modalMessage, setModalMessage] = useState('');
+    const [modalAction, setModalAction] = useState<(() => void) | null>(null);
+
+    const showModal = (title: string, message: string, action: (() => void) | null = null) => {
+      setModalTitle(title);
+      setModalMessage(message);
+      setModalAction(() => action);
+      setModalVisible(true);
+    };
+
+    const handleModalClose = () => {
+      setModalVisible(false);
+      if (modalAction) {
+        modalAction();
+        setModalAction(null);
+      }
+    };
 
     const handleResetPassword = async () => {
       setEmailError('');
@@ -85,10 +107,10 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
         return;
       }
 
-      // Validar formato de email
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      // Validar formato de email e domínio @gmail.com somente
+      const emailRegex = /^[^\s@]+@gmail\.com$/i;
       if (!emailRegex.test(email)) {
-        setEmailError('E-mail inválido');
+        setEmailError('E-mail inválido. Use um e-mail @gmail.com');
         return;
       }
 
@@ -100,23 +122,18 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
 
         // Sucesso
         setEmailEnviado(true);
-        Alert.alert(
+        showModal(
           'E-mail Enviado!',
           'Enviamos um link de redefinição de senha para seu e-mail. Verifique sua caixa de entrada.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                sheetRef.current?.dismiss();
-                setTimeout(() => {
-                  voltarParaLogin?.();
-                  // Resetar estado após fechar
-                  setEmail('');
-                  setEmailEnviado(false);
-                }, 200);
-              },
-            },
-          ]
+          () => {
+            sheetRef.current?.dismiss();
+            setTimeout(() => {
+              voltarParaLogin?.();
+              // Resetar estado após fechar
+              setEmail('');
+              setEmailEnviado(false);
+            }, 200);
+          }
         );
       } catch (err: any) {
         console.error('Erro ao resetar senha:', err);
@@ -124,8 +141,10 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
           setEmailError('E-mail não encontrado');
         } else if (err.code === 'auth/invalid-email') {
           setEmailError('E-mail inválido');
+        } else if (err.code === 'auth/network-request-failed') {
+          showModal('Sem Conexão', 'Verifique sua conexão com a internet e tente novamente.');
         } else {
-          Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
+          showModal('Erro', 'Falha inesperada. Tente novamente.');
         }
       } finally {
         setCarregando(false);
@@ -143,6 +162,30 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
         backgroundStyle={{ backgroundColor: 'transparent' }}
         handleIndicatorStyle={{ backgroundColor: '#FFFFFF80', width: 48 }}
       >
+        <CustomModal
+          visible={modalVisible}
+          onClose={handleModalClose}
+          title={modalTitle}
+        >
+          <Text style={{ fontSize: 16, color: '#333', lineHeight: 24 }}>
+            {modalMessage}
+          </Text>
+          <TouchableOpacity
+            style={{
+              marginTop: 20,
+              backgroundColor: '#076653',
+              paddingVertical: 12,
+              borderRadius: 12,
+              alignItems: 'center',
+            }}
+            onPress={handleModalClose}
+          >
+            <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>
+              {modalAction ? 'OK' : 'Entendi'}
+            </Text>
+          </TouchableOpacity>
+        </CustomModal>
+
         <LinearGradient colors={['#076653', '#0E3B34']} style={styles.cartao}>
           {/* Cabeçalho */}
           <View style={styles.header}>
@@ -193,6 +236,11 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
               aoEnviar={handleResetPassword}
             />
             {emailError ? <Text style={styles.erro}>{emailError}</Text> : null}
+            {!emailError && email.length > 0 ? (
+              <Text style={[styles.inlineHint, emailAccepted ? styles.hintOk : styles.hintError]}>
+                {emailAccepted ? 'E-mail aceito.' : 'Use um e-mail @gmail.com.'}
+              </Text>
+            ) : null}
 
             <TouchableOpacity
               style={[styles.enviarButton, carregando && styles.enviarButtonDisabled]}
@@ -246,6 +294,14 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     justifyContent: 'space-between',
   },
+  inlineHint: {
+    fontSize: 12,
+    marginTop: -6,
+    marginBottom: 8,
+    color: '#757575',
+  },
+  hintOk: { color: '#34C759' },
+  hintError: { color: '#FF3B30' },
   botaoVoltar: { padding: 6 },
   titulo: {
     color: '#FFFFFF',

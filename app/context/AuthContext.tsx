@@ -7,7 +7,7 @@ interface AuthContextData {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string) => Promise<{ user: User | null; error: any }>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<{ error: any }>;
 }
@@ -42,13 +42,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Safety timeout to prevent infinite loading
+    // Aumentado para 10s para acomodar conexões mais lentas
     const timeout = setTimeout(() => {
-      console.warn("⏰ Auth timeout reached");
       if (!hasInitialized) {
-        console.warn("⚠️ Auth loading timed out - forcing app entry");
+        console.warn("⚠️ Auth loading timed out (10s) - forcing app entry. Verifique sua conexão.");
         setLoading(false);
       }
-    }, 3000);
+    }, 10000);
 
     return () => {
       unsubscribe();
@@ -57,20 +57,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    console.log('⏳ Iniciando login...');
+    const start = Date.now();
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      console.log(`✅ Login concluído com sucesso em ${Date.now() - start}ms`);
       return { error: null };
     } catch (error: any) {
+      console.error(`❌ Erro no login após ${Date.now() - start}ms:`, error);
       return { error };
     }
   };
 
   const signUp = async (email: string, password: string) => {
+    console.log('⏳ Iniciando cadastro...');
+    const start = Date.now();
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      return { error: null };
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      console.log(`✅ Cadastro concluído com sucesso em ${Date.now() - start}ms`);
+      return { user: userCredential.user, error: null };
     } catch (error: any) {
-      return { error };
+      console.error(`❌ Erro no cadastro após ${Date.now() - start}ms:`, error);
+      return { user: null, error };
     }
   };
 

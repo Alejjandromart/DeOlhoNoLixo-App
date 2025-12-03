@@ -3,6 +3,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { AuthProvider } from './app/context/AuthContext';
 import { DenunciaProvider } from './app/context/DenunciaContext';
+import { PermissionProvider } from './app/context/PermissionContext';
 import AuthNavigator from './app/navigation/AuthNavigator';
 import { useFonts } from 'expo-font';
 import { View, ActivityIndicator } from 'react-native';
@@ -28,11 +29,13 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <DenunciaProvider>
-          <NavigationContainer>
-            <AuthNavigator />
-          </NavigationContainer>
-        </DenunciaProvider>
+        <PermissionProvider>
+          <DenunciaProvider>
+            <NavigationContainer>
+              <AuthNavigator />
+            </NavigationContainer>
+          </DenunciaProvider>
+        </PermissionProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

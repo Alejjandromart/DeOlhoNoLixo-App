@@ -19,7 +19,7 @@ class OrgaoService:
         orgaos_padrao = [
             OrgaoResponsavel.criar_orgao(
                 nome="SEMULSP - Secretaria Municipal de Limpeza Pública",
-                email="silvapeterson950@gmail.com",
+                email="alejjandromartin0@gmail.com",
                 tipoOrgao="Limpeza Urbana",
                 telefone="(92) 3215-6000",
                 cidade="Manaus",
@@ -29,7 +29,7 @@ class OrgaoService:
             ),
             OrgaoResponsavel.criar_orgao(
                 nome="SEMMAS - Secretaria Municipal de Meio Ambiente",
-                email="silvapeterson950@gmail.com",
+                email="alejjandromartin0@gmail.com",
                 tipoOrgao="Meio Ambiente",
                 telefone="(92) 3236-8577",
                 cidade="Manaus",
@@ -39,7 +39,7 @@ class OrgaoService:
             ),
             OrgaoResponsavel.criar_orgao(
                 nome="Defesa Civil de Manaus",
-                email="silvapeterson950@gmail.com",
+                email="alejjandromartin0@gmail.com",
                 tipoOrgao="Defesa Civil",
                 telefone="(92) 3236-3260",
                 cidade="Manaus",
@@ -49,7 +49,7 @@ class OrgaoService:
             ),
             OrgaoResponsavel.criar_orgao(
                 nome="IBAMA - Instituto Brasileiro do Meio Ambiente",
-                email="silvapeterson950@gmail.com",
+                email="alejjandromartin0@gmail.com",
                 tipoOrgao="Federal - Meio Ambiente",
                 telefone="(92) 3303-8900",
                 cidade="Manaus",

@@ -1,24 +1,117 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Switch, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Switch, ScrollView, ActivityIndicator, Animated, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../navigation/RootStack';
 import { useAuth } from '../../context/AuthContext';
+import { usePermissionPreferences } from '../../hooks/usePermissionPreferences';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import * as Location from 'expo-location';
+import { Camera, useCameraPermissions } from 'expo-camera';
+import * as Linking from 'expo-linking';
 
 type ConfiguracaoScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Configuracao'>;
 
+interface ToastProps {
+  message: string;
+  type: 'success' | 'error' | 'info';
+  visible: boolean;
+}
+
 const ConfiguracaoScreen = () => {
   const navigation = useNavigation<ConfiguracaoScreenNavigationProp>();
-  const { signOut } = useAuth();
-  const [gpsEnabled, setGpsEnabled] = useState(true);
-  const [cameraEnabled, setCameraEnabled] = useState(true);
+  const { signOut, user } = useAuth();
+  const { isGpsEnabled, isCameraEnabled, toggleGps, toggleCamera } = usePermissionPreferences();
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<ToastProps>({ message: '', type: 'success', visible: false });
+  const toastOpacity = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+
+  const fetchUserData = useCallback(async () => {
+    if (user?.uid) {
+      try {
+        const docRef = doc(db, 'usuarios', user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setUserData(docSnap.data());
+        }
+      } catch (error) {
+        console.error("Erro ao buscar dados do usuário:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserData();
+      checkPermissions();
+    }, [fetchUserData])
+  );
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ message, type, visible: true });
+    Animated.sequence([
+      Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.delay(2000),
+      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true })
+    ]).start(() => {
+      setToast({ message: '', type: 'success', visible: false });
+    });
+  };
+
+  const checkPermissions = async () => {
+    try {
+      const { status: locationStatus } = await Location.getForegroundPermissionsAsync();
+      // Just check, don't set state - we use preferences now
+
+      if (cameraPermission) {
+        // Camera permission check only
+      }
+    } catch (error) {
+      console.error('Erro ao verificar permissões:', error);
+    }
+  };
+
+  const handleToggleGps = async () => {
+    await toggleGps();
+    showToast(
+      isGpsEnabled ? 'Localização desativada no app' : 'Localização ativada no app',
+      'success'
+    );
+  };
+
+  const handleToggleCamera = async () => {
+    if (!isCameraEnabled) {
+      // Only request permission if enabling
+      try {
+        const permission = await requestCameraPermission();
+        if (!permission.granted) {
+          showToast('Permissão de câmera foi negada no dispositivo', 'error');
+          return;
+        }
+      } catch (error) {
+        console.error('Erro ao solicitar permissão de câmera:', error);
+        showToast('Erro ao solicitar permissão', 'error');
+        return;
+      }
+    }
+    await toggleCamera();
+    showToast(
+      isCameraEnabled ? 'Câmera desativada no app' : 'Câmera ativada no app',
+      'success'
+    );
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -46,12 +139,12 @@ const ConfiguracaoScreen = () => {
             style={styles.profileGradient}
           >
             <Image
-              source={{ uri: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' }}
+              source={(userData?.photoURL || user?.photoURL) ? { uri: userData?.photoURL || user?.photoURL } : require('../../assets/images/CAPI.png')}
               style={styles.profileImage}
             />
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>Luane Araujo</Text>
-              <Text style={styles.profileLocation}>Itacoatiara, AM</Text>
+              <Text style={styles.profileName}>{userData?.nomeCompleto || user?.displayName || 'Usuário'}</Text>
+              <Text style={styles.profileLocation}>{userData?.cidade || 'Cidade não informada'}</Text>
             </View>
             <View style={styles.profileAction}>
               <Feather name="chevron-right" size={20} color="#FFF" />
@@ -82,8 +175,8 @@ const ConfiguracaoScreen = () => {
               trackColor={{ false: "#E0E0E0", true: "#0B846C" }}
               thumbColor={"#FFFFFF"}
               ios_backgroundColor="#E0E0E0"
-              onValueChange={() => setGpsEnabled(prev => !prev)}
-              value={gpsEnabled}
+              onValueChange={handleToggleGps}
+              value={isGpsEnabled}
             />
           </View>
 
@@ -98,8 +191,8 @@ const ConfiguracaoScreen = () => {
               trackColor={{ false: "#E0E0E0", true: "#0B846C" }}
               thumbColor={"#FFFFFF"}
               ios_backgroundColor="#E0E0E0"
-              onValueChange={() => setCameraEnabled(prev => !prev)}
-              value={cameraEnabled}
+              onValueChange={handleToggleCamera}
+              value={isCameraEnabled}
             />
           </View>
 
@@ -158,6 +251,21 @@ const ConfiguracaoScreen = () => {
         confirmText="Excluir Permanentemente"
         type="danger"
       />
+
+      {/* Modern Toast Notification */}
+      {toast.visible && (
+        <Animated.View style={[styles.toast, styles[`toast_${toast.type}`], { opacity: toastOpacity }]}>
+          <View style={styles.toastContent}>
+            <Feather 
+              name={toast.type === 'success' ? 'check-circle' : toast.type === 'error' ? 'alert-circle' : 'info'} 
+              size={20} 
+              color="white" 
+              style={{ marginRight: 12 }}
+            />
+            <Text style={styles.toastMessage}>{toast.message}</Text>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 };
@@ -277,6 +385,41 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     fontSize: 13,
     marginBottom: 32,
+  },
+  toast: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  toast_success: {
+    backgroundColor: '#34C759',
+  },
+  toast_error: {
+    backgroundColor: '#FF3B30',
+  },
+  toast_info: {
+    backgroundColor: '#007AFF',
+  },
+  toastContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  toastMessage: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
   },
 });
 

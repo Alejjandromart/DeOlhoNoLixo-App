@@ -9,7 +9,6 @@ import {
   ListRenderItemInfo,
   useWindowDimensions,
   TouchableWithoutFeedback,
-  Dimensions,
   Image,
 } from 'react-native';
 import Animated, {
@@ -26,9 +25,8 @@ import Animated, {
   AnimatedRef,
 } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
-import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Video } from 'expo-video';
 import LottieView from 'lottie-react-native';
 
 // --- Data ---

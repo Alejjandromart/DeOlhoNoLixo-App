@@ -1,6 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, StyleSheet, Image, ActivityIndicator, Text } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { Splash } from '../screens/Auth/Splash';
 import OnboardingScreen from "../screens/Auth/Onboarding";
 import Inicial from '../screens/Auth/Inicial';
@@ -12,7 +12,6 @@ import AlterarSenhaScreen from '../screens/Home/AlterarSenhaScreen';
 import EsqueciSenha from '../screens/Auth/EsqueciSenha';
 import DenunciaIA from '../screens/DenunciaIA';
 import { useAuth } from '../context/AuthContext';
-import { useDenuncias } from '../context/DenunciaContext';
 import { DenunciaProvider } from '../context/DenunciaContext';
 import MainTabNavigator from './MainTabNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,7 +38,6 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 const RootStack = () => {
   const { user, loading } = useAuth();
-  const denunciaContext = useDenuncias();
   const [targetRoute, setTargetRoute] = useState<'Tutorial' | 'MainTabs' | null>(null);
 
   useEffect(() => {
@@ -70,12 +68,10 @@ const RootStack = () => {
     checkRoute();
   }, [user]);
 
-  const denunciasLoading = denunciaContext?.isLoading ?? false;
+  console.log('🔑 AuthNavigator - Loading:', loading, 'User:', user?.email || 'Nenhum', 'Target:', targetRoute);
 
-  console.log('🔑 AuthNavigator - Loading:', loading, 'User:', user?.email || 'Nenhum', 'Target:', targetRoute, 'DenunciasLoading:', denunciasLoading);
-
-  // Show splash while checking auth, determining route, or loading denuncias
-  if (loading || (user && !targetRoute) || (user && denunciasLoading)) {
+  // Show splash while checking auth or determining route for logged in user
+  if (loading || (user && !targetRoute)) {
     console.log('⏳ AuthNavigator showing loading screen...');
     return (
       <View style={styles.loadingContainer}>
@@ -84,12 +80,6 @@ const RootStack = () => {
           style={styles.splashImage}
           resizeMode="cover"
         />
-        {denunciasLoading && (
-          <View style={styles.loadingIndicator}>
-            <ActivityIndicator size="large" color="#0A7D6F" />
-            <Text style={styles.loadingText}>Carregando denúncias...</Text>
-          </View>
-        )}
       </View>
     );
   }
@@ -139,18 +129,6 @@ const styles = StyleSheet.create({
   splashImage: {
     width: '100%',
     height: '100%',
-  },
-  loadingIndicator: {
-    position: 'absolute',
-    bottom: 100,
-    alignSelf: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 

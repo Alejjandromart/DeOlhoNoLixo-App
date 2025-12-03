@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Modal, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
+import CustomModal from '../../components/Shared/CustomModal';
 
 const AlterarSenhaScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuth();
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
@@ -13,53 +18,107 @@ const AlterarSenhaScreen = () => {
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [emailRecuperacao, setEmailRecuperacao] = useState('');
+  const [loading, setLoading] = useState(false);
+  // Modal de feedback moderno (substitui Alert.alert)
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [feedbackTitle, setFeedbackTitle] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const showFeedback = (title: string, message: string) => {
+    setFeedbackTitle(title);
+    setFeedbackMessage(message);
+    setFeedbackVisible(true);
+  };
+  // Validação em tempo real para a nova senha
+  const senhaChecks = {
+    length: novaSenha.length >= 8,
+    upper: /[A-Z]/.test(novaSenha),
+    lower: /[a-z]/.test(novaSenha),
+    number: /\d/.test(novaSenha),
+    special: /[!@#$%^&*]/.test(novaSenha),
+  };
 
-  const handleAlterarSenha = () => {
+  const handleAlterarSenha = async () => {
     if (!senhaAtual || !novaSenha || !confirmarSenha) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+      showFeedback('Erro', 'Por favor, preencha todos os campos');
       return;
     }
 
     if (novaSenha !== confirmarSenha) {
-      Alert.alert('Erro', 'As senhas não coincidem');
+      showFeedback('Erro', 'As senhas não coincidem');
       return;
     }
 
-    if (novaSenha.length < 6) {
-      Alert.alert('Erro', 'A nova senha deve ter pelo menos 6 caracteres');
+    // Validar complexidade da nova senha
+    const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+    if (!senhaRegex.test(novaSenha)) {
+      showFeedback('Erro', 'A nova senha deve ter pelo menos 8 caracteres, incluindo 1 maiúscula, 1 minúscula, 1 número e 1 caractere especial (!@#$%^&*).');
       return;
     }
 
-    // Aqui você implementaria a lógica de alterar senha
-    Alert.alert('Sucesso', 'Senha alterada com sucesso!', [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+    if (!user || !user.email) {
+      showFeedback('Erro', 'Usuário não autenticado.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1) Reautenticar - capturamos erros separadamente para evitar que mensagens brutas vazem
+      try {
+        const credential = EmailAuthProvider.credential(user.email, senhaAtual);
+        await reauthenticateWithCredential(user, credential);
+      } catch (reauthErr: any) {
+        console.warn('Reautenticação falhou:', reauthErr?.code || reauthErr);
+        // Mapear códigos comuns para mensagens amigáveis
+        if (reauthErr?.code === 'auth/wrong-password' || reauthErr?.code === 'auth/invalid-credential') {
+          showFeedback('Erro', 'Senha atual incorreta. Verifique e tente novamente.');
+        } else if (reauthErr?.code === 'auth/too-many-requests') {
+          showFeedback('Erro', 'Muitas tentativas. Tente novamente mais tarde.');
+        } else {
+          showFeedback('Erro', 'Não foi possível verificar sua senha. Tente novamente.');
+        }
+        return;
+      }
+
+      // 2) Atualizar senha - também tratado separadamente
+      try {
+        await updatePassword(user, novaSenha);
+      } catch (updateErr: any) {
+        console.warn('Falha ao atualizar senha:', updateErr?.code || updateErr);
+        if (updateErr?.code === 'auth/weak-password') {
+          showFeedback('Erro', 'A nova senha é muito fraca.');
+        } else {
+          showFeedback('Erro', 'Falha ao alterar senha. Tente novamente.');
+        }
+        return;
+      }
+
+      // Sucesso
+      showFeedback('Sucesso', 'Senha alterada com sucesso!');
+      setTimeout(() => navigation.goBack(), 300);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEsqueciSenha = () => {
     setModalVisible(true);
   };
 
-  const handleEnviarEmail = () => {
+  const handleEnviarEmail = async () => {
     if (!emailRecuperacao) {
-      Alert.alert('Erro', 'Por favor, digite seu e-mail');
+      showFeedback('Erro', 'Por favor, digite seu e-mail');
       return;
     }
 
-    // Aqui você implementaria a lógica de enviar email de recuperação
-    Alert.alert(
-      'E-mail Enviado!', 
-      `Um link de recuperação foi enviado para ${emailRecuperacao}`,
-      [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            setModalVisible(false);
-            setEmailRecuperacao('');
-          }
-        }
-      ]
-    );
+    try {
+      await sendPasswordResetEmail(auth, emailRecuperacao);
+      showFeedback('E-mail Enviado!', `Um link de recuperação foi enviado para ${emailRecuperacao}`);
+      setModalVisible(false);
+      setEmailRecuperacao('');
+    } catch (error: any) {
+      console.error("Erro ao enviar email:", error);
+      showFeedback('Erro', 'Falha ao enviar e-mail de recuperação.');
+    }
   };
 
   return (
@@ -135,6 +194,30 @@ const AlterarSenhaScreen = () => {
             </TouchableOpacity>
           </View>
 
+          {/* Checklist em tempo real para nova senha */}
+          <View style={styles.passwordChecklist}>
+            <View style={styles.passwordRow}>
+              <Feather name={senhaChecks.length ? 'check-circle' : 'circle'} size={14} color={senhaChecks.length ? '#34C759' : '#C7C7CC'} />
+              <Text style={styles.passwordHint}>Mín. 8 caracteres</Text>
+            </View>
+            <View style={styles.passwordRow}>
+              <Feather name={senhaChecks.upper ? 'check-circle' : 'circle'} size={14} color={senhaChecks.upper ? '#34C759' : '#C7C7CC'} />
+              <Text style={styles.passwordHint}>1 letra maiúscula</Text>
+            </View>
+            <View style={styles.passwordRow}>
+              <Feather name={senhaChecks.lower ? 'check-circle' : 'circle'} size={14} color={senhaChecks.lower ? '#34C759' : '#C7C7CC'} />
+              <Text style={styles.passwordHint}>1 letra minúscula</Text>
+            </View>
+            <View style={styles.passwordRow}>
+              <Feather name={senhaChecks.number ? 'check-circle' : 'circle'} size={14} color={senhaChecks.number ? '#34C759' : '#C7C7CC'} />
+              <Text style={styles.passwordHint}>1 número</Text>
+            </View>
+            <View style={styles.passwordRow}>
+              <Feather name={senhaChecks.special ? 'check-circle' : 'circle'} size={14} color={senhaChecks.special ? '#34C759' : '#C7C7CC'} />
+              <Text style={styles.passwordHint}>1 caractere especial (!@#$%^&*)</Text>
+            </View>
+          </View>
+
           {/* Confirmar Nova Senha */}
           <Text style={styles.label}>Confirmar Nova Senha</Text>
           <View style={styles.inputContainer}>
@@ -156,27 +239,20 @@ const AlterarSenhaScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Dicas de Segurança */}
-          <View style={styles.tipsContainer}>
-            <Text style={styles.tipsTitle}>Dicas para uma senha segura:</Text>
-            <View style={styles.tipRow}>
-              <Feather name="check-circle" size={16} color="#076653" />
-              <Text style={styles.tipText}>Pelo menos 6 caracteres</Text>
-            </View>
-            <View style={styles.tipRow}>
-              <Feather name="check-circle" size={16} color="#076653" />
-              <Text style={styles.tipText}>Use letras e números</Text>
-            </View>
-            <View style={styles.tipRow}>
-              <Feather name="check-circle" size={16} color="#076653" />
-              <Text style={styles.tipText}>Evite informações pessoais</Text>
-            </View>
-          </View>
+
         </View>
 
         {/* Botão Salvar */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleAlterarSenha}>
-          <Text style={styles.saveButtonText}>Alterar Senha</Text>
+        <TouchableOpacity 
+          style={[styles.saveButton, loading && { opacity: 0.7 }]} 
+          onPress={handleAlterarSenha}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.saveButtonText}>Alterar Senha</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
 
@@ -231,6 +307,16 @@ const AlterarSenhaScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Modal moderno de feedback (erro / sucesso) */}
+      <CustomModal visible={feedbackVisible} onClose={() => setFeedbackVisible(false)} title={feedbackTitle}>
+        <View style={{ paddingVertical: 8 }}>
+          <Text style={{ color: '#666', fontSize: 14, marginBottom: 16 }}>{feedbackMessage}</Text>
+          <TouchableOpacity onPress={() => setFeedbackVisible(false)} style={{ alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12 }}>
+            <Text style={{ color: '#0B846C', fontWeight: '700' }}>OK</Text>
+          </TouchableOpacity>
+        </View>
+      </CustomModal>
     </KeyboardAvoidingView>
   );
 };
@@ -358,6 +444,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#757575',
     marginLeft: 8,
+  },
+  passwordChecklist: {
+    marginTop: 8,
+    marginBottom: 8,
+    paddingLeft: 2,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  passwordHint: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#666',
   },
   saveButton: {
     backgroundColor: '#076653',
