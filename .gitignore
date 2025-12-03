@@ -36,6 +36,10 @@ yarn-error.*
 .env
 .env.example
 
+# Firebase credentials
+serviceAccountKey.json
+**/serviceAccountKey.json
+
 # typescript
 *.tsbuildinfo
 
