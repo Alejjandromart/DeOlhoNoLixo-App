@@ -1,181 +1,210 @@
+# 📱 DeOlho NoLixo
 
-# 📱 DeOlho NoLixo – Mobile App
+> Aplicativo colaborativo para combater o descarte irregular de lixo usando Inteligência Artificial
 
-Aplicativo colaborativo para registrar, monitorar e denunciar pontos de descarte irregular de lixo, desenvolvido em **React Native + Expo + TypeScript**.
-O projeto busca engajar cidadãos e órgãos públicos no combate ao descarte irregular, garantindo transparência e participação social.
-
----
-
-## 🚀 Tecnologias Utilizadas
-
-- **React Native** → desenvolvimento multiplataforma (iOS/Android) com um único código-base.
-- **Expo** → simplifica a configuração do ambiente mobile e oferece integrações nativas rápidas.
-- **TypeScript** → adiciona tipagem estática ao JavaScript, prevenindo erros e facilitando manutenção.
-- **Express.js (backend)** → framework rápido e flexível para criação da API REST.
-- **MongoDB (planejado)** → banco de dados NoSQL para armazenamento das denúncias.
+[![License](https://img.shields.io/badge/license-0BSD-blue.svg)](LICENSE)
+[![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react)](https://reactnative.dev/)
+[![Expo](https://img.shields.io/badge/Expo-54-000020?logo=expo)](https://expo.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Latest-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 
 ---
 
-## 🔧 1. Pré-requisitos
+## 📖 Sobre o Projeto
 
-- [Node.js (LTS)](https://nodejs.org/en/)
-- [Git](https://git-scm.com/)
-- [VS Code](https://code.visualstudio.com/)
-- [Android Studio](https://docs.expo.dev/workflow/android-studio-emulator/) (para emulador Android)
-- [Expo Go](https://expo.dev/go?sdkVersion=54&platform=android&device=false) (para rodar no celular físico)
+**DeOlho NoLixo** é uma plataforma completa de denúncias cidadãs que conecta a população aos órgãos responsáveis pela gestão de resíduos. Usando **Inteligência Artificial**, o sistema classifica automaticamente denúncias de descarte irregular e as encaminha aos órgãos competentes.
 
-Verifique a instalação:
+### ✨ Funcionalidades
 
-```bash
-node -v
-npm -v
-git --version
+- 🔐 **Autenticação Completa**: Login, cadastro, recuperação de senha e login social (Google)
+- 📸 **Denúncias Inteligentes**: Foto + GPS + descrição com classificação automática por IA
+- 📱 **Feed Social**: Visualização, likes, comentários e compartilhamentos
+- 🤖 **IA de Classificação**: YOLOv8 detecta tipos de lixo em imagens
+- 🧠 **Análise Contextual**: Google Gemini identifica órgãos responsáveis
+- 🔔 **Notificações**: Alertas sobre status das denúncias
+- 👤 **Perfil Completo**: Histórico, estatísticas e configurações
+
+### 🏗️ Arquitetura
+
+```
+┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│   Mobile App    │ ───> │   Backend API    │ ───> │   Backend IA    │
+│ React Native    │      │  FastAPI+Redis   │      │  YOLOv8+Gemini  │
+│   + Expo        │ <─── │   + Firebase     │ <─── │                 │
+└─────────────────┘      └──────────────────┘      └─────────────────┘
 ```
 
 ---
 
-```bash
-📂 2. Estrutura do Repositório
+## 🚀 Quick Start
 
-A organização do repositório segue boas práticas para projetos React Native com Expo e TypeScript:
+### Pré-requisitos
 
+- [Node.js 18+](https://nodejs.org/) | [Python 3.11+](https://www.python.org/) | [Git](https://git-scm.com/)
+- [Android Studio](https://developer.android.com/studio) (emulador)
+- Conta [Firebase](https://firebase.google.com/) + API Key [Google Gemini](https://makersuite.google.com/app/apikey)
 
-DeOlhoNoLixo/
-│
-├── app/                     # Código fonte principal
-│   ├── assets/              # Mídia estática
-│   │   ├── fonts/           # Fontes do App
-│   │   ├── images/          # Logo, ícones, backgorunds
-│   │   ├── lottie/          # Animaçoes de loading, de sucesso
-│   ├── components/          # Componentes UI reutilizáveis
-│   ├── constants/           # Valores fixos
-│   │   ├── Colors.ts        # Paleta de Cores
-│   │   ├── Dimensions.ts    # Tamanho de tela e margens
-│   │   ├── Config.ts        # Tamanho de tela e margens
-│   ├── screens/             # Telas do aplicativo PRINCIPAL
-│   │   ├── Auth/            # Telas de autenticação (Login, Cadastro, Recuperação de Senha)
-│   │   ├── Profile/         # Telas de perfil e configurações
-│   │   ├── Denuncia/        # Telas relacionadas às denúncias (Criar, Detalhes)
-│   │   └── Feed/            # Telas do feed e interações
-│   |
-├── backend/                 # Código de Lógica
-│   ├── ai/                  # Módulo de Inteligência Artificial 🤖
-│   │   ├── classifiers/     # Classes de classificação (simples/contextual)
-│   │   │   ├── ClassificadorSimples.js
-│   │   │   └── ClassificadorContextual.js
-│   │   ├── services/        # Serviços externos (AWS Rekognition, APIs IBGE/OSM)
-│   │   │   ├── rekognition.js
-│   │   │   ├── overpass.js
-│   │   │   └── ibge.js
-│   │   ├── utils/           # Funções auxiliares (cache, fallback, logs)
-│   │   └── tests/           # Testes unitários da IA
-│   │
-│   ├── data/                # Módulo de Inteligência Artificial 🤖
-│
-├── # Configurações do sistema
-└── README.md                # Documentação do projeto
-```
-
-Essa estrutura garante que cada parte do app seja modular e que os devs possam trabalhar em paralelo (ex: um no fluxo de **Autenticação** e outro no **Feed**).
-
----
-
-## 📦 3. Instalação
-
-Clonar o repositório e instalar dependências:
+### Instalação Rápida
 
 ```bash
-git clone <url-do-repo>
-cd DeOlhoNoLixo
+# 1. Clonar repositório
+git clone https://github.com/Alejjandromart/DeOlhoNoLixo-App.git
+cd DeOlhoNoLixo-App
+
+# 2. Instalar dependências
 npm install
-# ou
-yarn install
+
+# 3. Configurar backends
+cd backend/BackendRedis && pip install -r requirements.txt
+cd ../../backendIA && pip install -r requirements.txt
 ```
 
----
-
-## 📱 4. Configuração do Ambiente Mobile
-
-1. Instalar o **Android Studio** e criar um emulador.
-2. Instalar o **Expo CLI** globalmente:
-
-   ```bash
-   npm install -g expo-cli
-   ```
-3. Abrir o emulador ou instalar o **Expo Go** no celular físico.
-
----
-
-## 🛠 5. Extensões Recomendadas no VS Code
-
-* **Prettier – Code formatter** → formatação de código.
-* **ESLint** → padronização e qualidade do código.
-* **ES7+ React/Redux/React-Native snippets** → snippets úteis para agilizar.
-* **Formatter Hero** → organiza imports automaticamente.
-
----
-
-## ▶️ 6. Rodando o Projeto
-
-* **No emulador Android**:
+### Executar
 
 ```bash
-npm run android
-```
+# Terminal 1 - Backend Principal
+cd backend/BackendRedis
+uvicorn app.main:app --reload --port 8000
 
-* **No celular físico (QR Code)**:
+# Terminal 2 - Backend IA
+cd backendIA
+uvicorn app.main:app --reload --port 8001
 
-```bash
+# Terminal 3 - App Mobile
 npm start
 ```
 
----
-
-## 🔄 7. Fluxo de Trabalho com Git
-
-1. Atualizar branch principal:
-
-   ```bash
-   git pull origin main
-   ```
-2. Criar branch por funcionalidade:
-
-   ```bash
-   git checkout -b feature/nome-da-tela
-   ```
-3. Commitar com mensagens claras:
-
-   ```bash
-   git commit -m "feat: tela de login"
-   ```
-4. Subir branch:
-
-   ```bash
-   git push origin feature/nome-da-tela
-   ```
-5. Abrir **Pull Request** no GitHub para revisão.
+📚 **Guia completo**: [docs/INSTALACAO.md](docs/INSTALACAO.md)
 
 ---
 
-## ✅ 8. Padronização de Código
+## 📚 Documentação
 
-* Usar **TypeScript** sempre.
-* Componentes devem ser **funcionais com hooks**.
-* Commits seguem convenção:
+| Documento | Descrição |
+|-----------|-----------|  
+| **[📦 Instalação](docs/INSTALACAO.md)** | Guia completo passo a passo de instalação e configuração |
+| **[🚀 Tecnologias](docs/TECNOLOGIAS.md)** | Stack técnico detalhado e justificativas |
+| **[📁 Estrutura](docs/ESTRUTURA.md)** | Organização de pastas e arquivos do projeto |
+| **[🤝 Contribuindo](docs/CONTRIBUINDO.md)** | Como contribuir, padrões de código e Git workflow |
+| **[🆘 Troubleshooting](docs/TROUBLESHOOTING.md)** | Soluções para problemas comuns |
 
-  * `feat:` → nova funcionalidade
-  * `fix:` → correção
-  * `refactor:` → refatoração
-  * `docs:` → documentação
-* Código deve passar por **ESLint + Prettier** antes de merge.
+
+
+---
+
+## 📂 Estrutura do Projeto
+
+```
+DeOlhoNoLixo-App/
+├── 📱 app/                      # Mobile App (React Native + Expo)
+│   ├── screens/                 # Telas (Auth, Home, Denúncias)
+│   ├── components/              # Componentes reutilizáveis
+│   ├── navigation/              # Navegação
+│   └── services/                # APIs
+│
+├── 🔧 backend/BackendRedis/     # Backend Principal (FastAPI)
+│   └── app/                     # API REST
+│
+├── 🤖 backendIA/                # Backend IA (YOLOv8 + Gemini)
+│   └── app/                     # Serviços de IA
+│
+└── 📄 docs/                     # Documentação
+```
+
+**Estrutura completa**: [docs/ESTRUTURA.md](docs/ESTRUTURA.md)
 
 ---
 
-## 👨‍💻 Equipe e Divisão
+## 🤝 Contribuindo
 
-* **Dev 1** → Autenticação (Login, Cadastro, Recuperação, Perfil).
-* **Dev 2** → Denúncias e Feed (Home, Criar, Detalhes, Comentários).
-* **Backend** → API com Express.js + MongoDB (implementação futura).
-* **IA** → processamento de imagem/texto para classificação de denúncias.
+Contribuições são bem-vindas! 
+
+### Como Contribuir
+
+1. Fork o projeto
+2. Crie sua branch (`git checkout -b feature/MinhaFeature`)
+3. Commit (`git commit -m 'feat: adiciona MinhaFeature'`)
+4. Push (`git push origin feature/MinhaFeature`)
+5. Abra um Pull Request
+
+### Áreas de Contribuição
+
+- 🎨 **Frontend**: UI/UX, componentes
+- 🔧 **Backend**: Endpoints, otimizações
+- 🤖 **IA**: Modelos, prompts
+- 📝 **Docs**: Tutoriais, traduções
+- 🧪 **Testes**: Cobertura de testes
+
+**Guia completo**: [docs/CONTRIBUINDO.md](docs/CONTRIBUINDO.md)
 
 ---
+
+## 🐛 Problemas e Suporte
+
+### Problemas Comuns
+
+- ❌ **"Unable to resolve module"** → `npx expo start -c`
+- ❌ **Backend não conecta** → Usar IP ao invés de localhost
+- ❌ **Firebase errors** → Verificar credenciais
+- ❌ **Permissões negadas** → Ver [PermissionsScreen.tsx](app/screens/Auth/PermissionsScreen.tsx)
+
+**Soluções completas**: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+
+### Obter Ajuda
+
+- 🐛 **[Issues](https://github.com/Alejjandromart/DeOlhoNoLixo-App/issues)**: Para bugs
+- 💬 **[Discussions](https://github.com/Alejjandromart/DeOlhoNoLixo-App/discussions)**: Para perguntas
+
+---
+
+## 🗺️ Roadmap
+
+### ✅ Implementado
+- [x] Autenticação com Firebase
+- [x] Feed de denúncias
+- [x] Classificação YOLOv8
+- [x] Análise com Gemini
+
+### 🚧 Em Desenvolvimento
+- [ ] Testes automatizados
+- [ ] Mapas interativos
+- [ ] Notificações push
+
+### 🎯 Planejado
+- [ ] Dashboard administrativo
+- [ ] App Web
+- [ ] Internacionalização
+
+---
+
+## 👥 Equipe
+
+Desenvolvido com ❤️ por estudantes engajados em melhorar a gestão de resíduos urbanos.
+
+---
+
+## 📄 Licença
+
+Este projeto está sob a licença **0BSD** (Zero-Clause BSD).
+
+---
+
+## 🌟 Agradecimentos
+
+- [React Native Community](https://reactnative.dev/)
+- [Expo Team](https://expo.dev/)
+- [Google Gemini AI](https://ai.google.dev/)
+- [Firebase](https://firebase.google.com/)
+- [Ultralytics YOLOv8](https://ultralytics.com/)
+
+---
+
+<div align="center">
+  
+**DeOlho NoLixo** - Juntos por cidades mais limpas! 🌍♻️
+
+Se este projeto foi útil, considere dar uma ⭐️!
+
+</div>
+
