@@ -180,7 +180,14 @@ Contribuições são bem-vindas!
 
 ## 👥 Equipe
 
-Desenvolvido com ❤️ por estudantes engajados em melhorar a gestão de resíduos urbanos.
+Desenvolvido com ❤️ por estudantes engajados em tecnologia.
+
+- **Alejjandro Martins Dutra** - 22400664
+- **Dieglison Correia Varejão** - 22400267
+- **Joel Carlos Alípio** - 22400269
+- **Lanna da Silva Lima** - 22450267
+- **Peterson Kevyn Silva de Souza** - 22450268
+- **Veríssimo Casas** - 21851507
 
 ---
 
