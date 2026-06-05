@@ -112,9 +112,9 @@ runs/
 **/images/
 **/labels/
 **/data/
-# Exceções: assets do app mobile devem sempre ser incluídos
-!app/assets/
-!app/assets/**
+# Exceções: todo o diretório app/ deve sempre ser incluído
+!app/
+!app/**
 data/
 backend/data/
 backend/**/data/
