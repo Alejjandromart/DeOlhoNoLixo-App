@@ -108,16 +108,12 @@ runs/
 !backend/trash.v1i.yolov8/runs/refined_train/weights/best.pt
 
 
-# Dataset folders (imagens / labels) — geralmente não versionar grandes datasets
-**/images/
-**/labels/
-**/data/
-# Exceções: todo o diretório app/ deve sempre ser incluído
-!app/
-!app/**
+# Dataset folders (imagens / labels) — apenas no backend, nunca no app/
+backend/**/images/
+backend/**/labels/
+backend/**/data/
 data/
 backend/data/
-backend/**/data/
 backend/trash.v1i.yolov8/yolov8n.pt
 
 # Misc binaries
