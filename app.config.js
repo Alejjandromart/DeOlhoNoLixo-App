@@ -72,7 +72,7 @@ module.exports = {
         foregroundImage: "./app/assets/images/DeOlhoIcon.png",
         backgroundColor: "#ffffff"
       },
-      package: "com.deolhonolixo.app",
+      package: "DeOlho.NoLixo",
       googleServicesFile: "./google-services.json"
     },
     web: {
