@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+.env.*
+test_backend.py
+trash.v1i.yolov8/

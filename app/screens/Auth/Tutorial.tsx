@@ -194,7 +194,7 @@ const TutorialRenderItem = ({ index, x, item }: RenderItemProps) => {
       </View>
 
       {/* Text Content */}
-      <Animated.View style={[contentAnimationStyle, { alignItems: 'center', marginTop: 40 }]}>
+      <Animated.View style={[contentAnimationStyle, { alignItems: 'center', marginTop: 15 }]}>
         <Text style={[styles.itemText, { color: item.textColor }]}>
           {item.text}
         </Text>
@@ -499,14 +499,14 @@ const styles = StyleSheet.create({
   },
   visualContainer: {
     width: '100%',
-    height: 420,
+    height: 340,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
   videoContainer: {
-    width: 300,
-    height: 500,
+    width: 240,
+    height: 340,
     borderRadius: 20,
     overflow: 'hidden',
     justifyContent: 'center',

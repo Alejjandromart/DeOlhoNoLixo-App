@@ -64,11 +64,16 @@ export default function Step1PhotosLocation({ data, updateData }: Props) {
             mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [4, 3],
-            quality: 0.8,
+            quality: 0.2,
+            base64: true,
         });
 
         if (!result.canceled && result.assets[0]) {
-            updateData({ photos: [...data.photos, result.assets[0].uri] });
+            const base64Str = result.assets[0].base64 ? `data:image/jpeg;base64,${result.assets[0].base64}` : '';
+            updateData({ 
+                photos: [...data.photos, result.assets[0].uri],
+                photosBase64: [...(data.photosBase64 || []), base64Str]
+            });
         }
     };
 
@@ -77,20 +82,32 @@ export default function Step1PhotosLocation({ data, updateData }: Props) {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsMultipleSelection: true,
-            quality: 0.8,
+            quality: 0.2,
             selectionLimit: MAX_PHOTOS - data.photos.length,
+            base64: true,
         });
 
         if (!result.canceled) {
             const newPhotos = result.assets.map((asset) => asset.uri);
-            updateData({ photos: [...data.photos, ...newPhotos].slice(0, MAX_PHOTOS) });
+            const newBase64s = result.assets.map((asset) => asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : '');
+            updateData({ 
+                photos: [...data.photos, ...newPhotos].slice(0, MAX_PHOTOS),
+                photosBase64: [...(data.photosBase64 || []), ...newBase64s].slice(0, MAX_PHOTOS)
+            });
         }
     };
 
     const handleRemovePhoto = (index: number) => {
         const newPhotos = [...data.photos];
         newPhotos.splice(index, 1);
-        updateData({ photos: newPhotos });
+        const newBase64s = data.photosBase64 ? [...data.photosBase64] : [];
+        if (newBase64s.length > index) {
+            newBase64s.splice(index, 1);
+        }
+        updateData({ 
+            photos: newPhotos,
+            photosBase64: newBase64s
+        });
     };
 
     const handleLocate = async () => {

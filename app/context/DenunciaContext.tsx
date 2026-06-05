@@ -1,211 +1,315 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  updateDoc,
+  doc,
+  arrayUnion,
+  arrayRemove,
+  serverTimestamp,
+  increment,
+  query,
+  orderBy,
+  Timestamp,
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { useAuth } from './AuthContext';
+import Constants from 'expo-constants';
+
+const BACKEND_URL = (Constants.expoConfig?.extra?.backendUrl as string) ?? 'https://deolho-ia.onrender.com';
+const BACKEND_API_KEY = (Constants.expoConfig?.extra?.backendApiKey as string) ?? '';
+
+// ─── Tipos ───────────────────────────────────────────────────────────────────
 
 export interface Comentario {
-  id: number;
-  usuario: {
-    nome: string;
-    avatar?: string;
-  };
+  id: string;
+  userId: string;
+  usuario: { nome: string; avatar?: string };
   texto: string;
-  tempoAtras: string;
   timestamp: Date;
+  tempoAtras: string;
 }
 
 export interface Denuncia {
-  id: number;
-  usuario: {
-    nome: string;
-    avatar?: string;
-  };
+  id: string;
+  userId: string;
+  usuario: { nome: string; avatar?: string };
   localizacao: string;
-  status: string;
-  tempoAtras: string;
-  descricao: string;
-  imagens: string[];
-  likes: number;
-  isLiked: boolean;
   latitude?: number;
   longitude?: number;
+  descricao: string;
   tipos?: string[];
+  status: 'Pendente' | 'Em Andamento' | 'Resolvido';
+  imagens: string[];
+  likes: number;
+  likedBy: string[];
+  isLiked: boolean;       // computado client-side
   timestamp: Date;
+  tempoAtras: string;
   comentarios: Comentario[];
+  comentariosCount: number;
+}
+
+export interface NovaDenuncia {
+  usuario: { nome: string; avatar?: string | null };
+  localizacao: string;
+  latitude?: number;
+  longitude?: number;
+  descricao: string;
+  tipos?: string[];
+  categoria?: string;
+  imagensLocais: string[];
+  imagensBase64?: string[];
 }
 
 interface DenunciaContextData {
   denuncias: Denuncia[];
-  adicionarDenuncia: (denuncia: Omit<Denuncia, 'id' | 'likes' | 'isLiked' | 'tempoAtras' | 'status' | 'comentarios'>) => void;
-  curtirDenuncia: (id: number) => void;
-  adicionarComentario: (denunciaId: number, texto: string, usuario: { nome: string; avatar?: string }) => void;
+  loadingFeed: boolean;
+  adicionarDenuncia: (data: NovaDenuncia) => Promise<void>;
+  curtirDenuncia: (id: string) => Promise<void>;
+  adicionarComentario: (
+    denunciaId: string,
+    texto: string,
+    usuario: { nome: string; avatar?: string | null }
+  ) => Promise<void>;
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const calcularTempoAtras = (date: Date): string => {
+  const diff = Date.now() - date.getTime();
+  const min = Math.floor(diff / 60_000);
+  const h = Math.floor(diff / 3_600_000);
+  const d = Math.floor(diff / 86_400_000);
+  if (min < 1) return 'agora';
+  if (min < 60) return `${min}min`;
+  if (h < 24) return `${h}h`;
+  if (d === 1) return '1 dia';
+  if (d < 7) return `${d} dias`;
+  if (d < 30) return `${Math.floor(d / 7)} sem.`;
+  return `${Math.floor(d / 30)} mês`;
+};
+
+// Faz o upload direto para o Cloudinary via API REST
+const uploadImagemCloudinary = async (uri: string): Promise<string> => {
+  const data = new FormData();
+  data.append('file', {
+    uri: uri,
+    type: 'image/jpeg',
+    name: `upload_${Date.now()}.jpg`,
+  } as any);
+  data.append('upload_preset', 'deolho_app');
+  
+  const response = await fetch('https://api.cloudinary.com/v1_1/drte2ruwe/image/upload', {
+    method: 'POST',
+    body: data,
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'multipart/form-data',
+    }
+  });
+
+  const responseData = await response.json();
+  if (responseData.secure_url) {
+    return responseData.secure_url;
+  } else {
+    throw new Error('Falha no upload da imagem para o Cloudinary');
+  }
+};
+
+const uploadImagemCloudinaryBase64 = async (base64Data: string): Promise<string> => {
+  const response = await fetch('https://api.cloudinary.com/v1_1/drte2ruwe/image/upload', {
+    method: 'POST',
+    body: JSON.stringify({
+      file: base64Data,
+      upload_preset: 'deolho_app',
+      public_id: `upload_${Date.now()}`,
+      filename_override: `upload_${Date.now()}.jpg`,
+    }),
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    }
+  });
+
+  const responseData = await response.json();
+  if (responseData.secure_url) {
+    return responseData.secure_url;
+  } else {
+    console.error('Cloudinary JSON upload error:', responseData);
+    throw new Error('Falha no upload da imagem para o Cloudinary');
+  }
+};
+
+// ─── Context ─────────────────────────────────────────────────────────────────
 
 const DenunciaContext = createContext<DenunciaContextData | null>(null);
 
-export const useDenuncias = () => {
-  const context = useContext(DenunciaContext);
-  return context as DenunciaContextData;
-};
-
-// Mock data inicial
-const MOCK_DENUNCIAS: Denuncia[] = [
-  {
-    id: 1,
-    usuario: {
-      nome: 'Sergio Mar',
-      avatar: undefined,
-    },
-    localizacao: 'Rua Carlos Castelo',
-    status: 'Pendente',
-    tempoAtras: '2 dias',
-    descricao: 'Lixo acumulado na calçada há vários dias. Necessário intervenção urgente para evitar problemas de saúde pública.',
-    imagens: [
-      'https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=600',
-      'https://images.unsplash.com/photo-1604187351574-c75ca79f5807?w=600',
-      'https://images.unsplash.com/photo-1586803984030-c5f9e52cf3c1?w=600',
-    ],
-    likes: 12,
-    isLiked: false,
-    timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    comentarios: [
-      {
-        id: 1,
-        usuario: { nome: 'Sergio Mar' },
-        texto: 'fazia comentários sobre a atuação do técnico da prefeitura de Itacoatiara',
-        tempoAtras: '4h',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      },
-      {
-        id: 2,
-        usuario: { nome: 'Sergio Mar' },
-        texto: 'fazia comentários sobre a atuação do técnico da prefeitura de Itacoatiara',
-        tempoAtras: '4h',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      },
-      {
-        id: 3,
-        usuario: { nome: 'Sergio Mar' },
-        texto: 'fazia comentários sobre a atuação do técnico da prefeitura de Itacoatiara',
-        tempoAtras: '4h',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      },
-      {
-        id: 4,
-        usuario: { nome: 'Sergio Mar' },
-        texto: 'fazia comentários sobre a atuação do técnico da prefeitura de Itacoatiara',
-        tempoAtras: '4h',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      },
-    ],
-  },
-  {
-    id: 2,
-    usuario: {
-      nome: 'Maria Silva',
-      avatar: undefined,
-    },
-    localizacao: 'Av. Paulista',
-    status: 'Em Andamento',
-    tempoAtras: '5 dias',
-    descricao: 'Contêiner transbordando na esquina.',
-    imagens: [
-      'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=600',
-    ],
-    likes: 8,
-    isLiked: true,
-    timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    comentarios: [],
-  },
-  {
-    id: 3,
-    usuario: {
-      nome: 'João Santos',
-      avatar: undefined,
-    },
-    localizacao: 'Rua das Flores',
-    status: 'Resolvido',
-    tempoAtras: '1 semana',
-    descricao: 'Lixo hospitalar descartado incorretamente.',
-    imagens: [
-      'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=600',
-      'https://images.unsplash.com/photo-1604187351574-c75ca79f5807?w=600',
-    ],
-    likes: 24,
-    isLiked: false,
-    timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    comentarios: [],
-  },
-];
-
 export const DenunciaProvider = ({ children }: { children: ReactNode }) => {
-  const [denuncias, setDenuncias] = useState<Denuncia[]>(MOCK_DENUNCIAS);
+  const { user } = useAuth();
+  const [denuncias, setDenuncias] = useState<Denuncia[]>([]);
+  const [loadingFeed, setLoadingFeed] = useState(true);
 
-  const calcularTempoAtras = (timestamp: Date): string => {
-    const agora = new Date();
-    const diferenca = agora.getTime() - timestamp.getTime();
-    const minutos = Math.floor(diferenca / 60000);
-    const horas = Math.floor(diferenca / 3600000);
-    const dias = Math.floor(diferenca / 86400000);
+  // Feed em tempo real — mais recentes primeiro
+  useEffect(() => {
+    const q = query(
+      collection(db, 'denuncias'),
+      orderBy('timestamp', 'desc')
+    );
 
-    if (minutos < 1) return 'agora mesmo';
-    if (minutos < 60) return `${minutos} min`;
-    if (horas < 24) return `${horas}h`;
-    if (dias === 1) return '1 dia';
-    if (dias < 7) return `${dias} dias`;
-    if (dias < 30) return `${Math.floor(dias / 7)} semana${Math.floor(dias / 7) > 1 ? 's' : ''}`;
-    return `${Math.floor(dias / 30)} mês${Math.floor(dias / 30) > 1 ? 'es' : ''}`;
-  };
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const lista: Denuncia[] = snapshot.docs.map((docSnap) => {
+          const d = docSnap.data();
+          const ts = (d.timestamp as Timestamp)?.toDate?.() ?? new Date();
+          const likedBy: string[] = d.likedBy ?? [];
+          return {
+            id: docSnap.id,
+            userId: d.userId ?? '',
+            usuario: d.usuario ?? { nome: 'Usuário' },
+            localizacao: d.localizacao ?? '',
+            latitude: d.latitude ?? undefined,
+            longitude: d.longitude ?? undefined,
+            descricao: d.descricao ?? '',
+            tipos: d.tipos ?? [],
+            status: d.status ?? 'Pendente',
+            imagens: d.imagensUrls ?? [], // Mapeando imagensUrls do Firebase para imagens
+            likes: d.likes ?? 0,
+            likedBy,
+            isLiked: user ? likedBy.includes(user.uid) : false,
+            timestamp: ts,
+            tempoAtras: calcularTempoAtras(ts),
+            comentarios: [],          // carregados sob demanda na tela da denúncia
+            comentariosCount: d.comentariosCount ?? 0,
+          };
+        });
+        setDenuncias(lista);
+        setLoadingFeed(false);
+      },
+      (error) => {
+        console.error('Erro ao ouvir denúncias:', error);
+        setLoadingFeed(false);
+      }
+    );
 
-  const adicionarDenuncia = (novaDenuncia: Omit<Denuncia, 'id' | 'likes' | 'isLiked' | 'tempoAtras' | 'status' | 'comentarios'>) => {
-    const denuncia: Denuncia = {
-      ...novaDenuncia,
-      id: Date.now(),
-      likes: 0,
-      isLiked: false,
+    return unsubscribe;
+  }, [user?.uid]);
+
+  // ── Ações ──────────────────────────────────────────────────────────────────
+
+  const adicionarDenuncia = async (data: NovaDenuncia): Promise<void> => {
+    if (!user) throw new Error('Usuário não autenticado');
+
+    // Upload de todas as imagens para o Cloudinary antes de salvar no Firestore
+    const imagensUrls = await Promise.all(
+      data.imagensLocais.map((uri, index) => {
+        const b64 = data.imagensBase64?.[index];
+        if (b64) {
+          return uploadImagemCloudinaryBase64(b64);
+        }
+        return uploadImagemCloudinary(uri);
+      })
+    );
+
+    const sanitizedUsuario = {
+      nome: data.usuario.nome || 'Usuário',
+      avatar: (data.usuario.avatar === undefined || data.usuario.avatar === null) ? null : data.usuario.avatar,
+    };
+
+    await addDoc(collection(db, 'denuncias'), {
+      userId: user.uid,
+      usuario: sanitizedUsuario,
+      localizacao: data.localizacao,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
+      descricao: data.descricao,
+      tipos: data.tipos ?? [],
       status: 'Pendente',
-      tempoAtras: calcularTempoAtras(novaDenuncia.timestamp),
-      comentarios: [],
-    };
+      imagensUrls,
+      likes: 0,
+      likedBy: [],
+      comentariosCount: 0,
+      timestamp: serverTimestamp(),
+    });
 
-    setDenuncias(prev => [denuncia, ...prev]);
+    // Enviar notificação por e-mail de forma automática em segundo plano pelo backend
+    try {
+      fetch(`${BACKEND_URL}/send-report-email`, {
+        method: 'POST',
+        headers: {
+          'X-API-Key': BACKEND_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: data.categoria || data.tipos?.[0] || 'Ambiental',
+          location: data.localizacao,
+          latitude: data.latitude ?? null,
+          longitude: data.longitude ?? null,
+          description: data.descricao,
+          images: imagensUrls,
+        }),
+      }).catch((err) => console.error('Erro de envio de email da denúncia:', err));
+    } catch (e) {
+      console.error('Erro ao chamar backend de e-mail:', e);
+    }
   };
 
-  const curtirDenuncia = (id: number) => {
-    setDenuncias(prev =>
-      prev.map(d =>
-        d.id === id
-          ? {
-              ...d,
-              isLiked: !d.isLiked,
-              likes: d.isLiked ? d.likes - 1 : d.likes + 1,
-            }
-          : d
-      )
-    );
+  const curtirDenuncia = async (id: string): Promise<void> => {
+    if (!user) return;
+    const denuncia = denuncias.find((d) => d.id === id);
+    if (!denuncia) return;
+    const ref = doc(db, 'denuncias', id);
+    if (denuncia.isLiked) {
+      await updateDoc(ref, {
+        likedBy: arrayRemove(user.uid),
+        likes: denuncia.likes - 1,
+      });
+    } else {
+      await updateDoc(ref, {
+        likedBy: arrayUnion(user.uid),
+        likes: denuncia.likes + 1,
+      });
+    }
   };
 
-  const adicionarComentario = (denunciaId: number, texto: string, usuario: { nome: string; avatar?: string }) => {
-    const novoComentario: Comentario = {
-      id: Date.now(),
-      usuario,
-      texto,
-      tempoAtras: 'agora mesmo',
-      timestamp: new Date(),
+  const adicionarComentario = async (
+    denunciaId: string,
+    texto: string,
+    usuario: { nome: string; avatar?: string | null }
+  ): Promise<void> => {
+    if (!user || !texto.trim()) return;
+    const sanitizedUsuario = {
+      nome: usuario.nome || 'Usuário',
+      avatar: (usuario.avatar === undefined || usuario.avatar === null) ? null : usuario.avatar,
     };
-
-    setDenuncias(prev =>
-      prev.map(d =>
-        d.id === denunciaId
-          ? {
-              ...d,
-              comentarios: [...d.comentarios, novoComentario],
-            }
-          : d
-      )
-    );
+    const comentariosRef = collection(db, 'denuncias', denunciaId, 'comentarios');
+    await addDoc(comentariosRef, {
+      userId: user.uid,
+      usuario: sanitizedUsuario,
+      texto: texto.trim(),
+      timestamp: serverTimestamp(),
+    });
+    // Incremento atômico do contador
+    await updateDoc(doc(db, 'denuncias', denunciaId), {
+      comentariosCount: increment(1),
+    });
   };
 
   return (
-    <DenunciaContext.Provider value={{ denuncias, adicionarDenuncia, curtirDenuncia, adicionarComentario }}>
+    <DenunciaContext.Provider
+      value={{ denuncias, loadingFeed, adicionarDenuncia, curtirDenuncia, adicionarComentario }}
+    >
       {children}
     </DenunciaContext.Provider>
   );
+};
+
+export const useDenuncias = () => {
+  const context = useContext(DenunciaContext);
+  if (!context) {
+    throw new Error('useDenuncias deve ser usado dentro de um DenunciaProvider');
+  }
+  return context;
 };

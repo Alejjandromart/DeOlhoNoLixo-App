@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useAuth } from '../../context/AuthContext';
+import { useDenuncias } from '../../context/DenunciaContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 import Header from '../DenunciaIA/components/Header';
 import ProgressIndicator from '../DenunciaIA/components/ProgressIndicator';
@@ -26,6 +29,7 @@ export enum Step {
 export interface ReportData {
     id: string;
     photos: string[];
+    photosBase64?: string[];
     location: string;
     coordinates?: { lat: number; lng: number };
     description: string;
@@ -39,10 +43,13 @@ export interface ReportData {
 export default function DenunciaIA() {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { adicionarDenuncia } = useDenuncias();
 
     const [currentStep, setCurrentStep] = useState<number>(Step.PhotosAndLocation);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showAlertModal, setShowAlertModal] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const submittingRef = useRef(false);
     const [alertConfig, setAlertConfig] = useState({
         type: 'warning' as 'success' | 'warning' | 'error' | 'info',
         title: '',
@@ -51,6 +58,7 @@ export default function DenunciaIA() {
     const [reportData, setReportData] = useState<ReportData>({
         id: Math.random().toString(36).substring(7),
         photos: [],
+        photosBase64: [],
         location: '',
         description: '',
         category: 'ambiental',
@@ -97,9 +105,54 @@ export default function DenunciaIA() {
         setCurrentStep(step);
     };
 
-    const handleSubmit = () => {
-        console.log('Submitting report:', reportData);
-        setCurrentStep(Step.Success);
+    const handleSubmit = async () => {
+        if (submittingRef.current) return;
+        
+        let sucesso = false;
+        try {
+            submittingRef.current = true;
+            setIsSubmitting(true);
+            let nomeUsuario = user?.displayName ?? user?.email?.split('@')[0] ?? 'Usuário';
+            let avatar = null;
+
+            if (user) {
+                try {
+                    const docRef = doc(db, 'users', user.uid);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        nomeUsuario = snap.data().displayName || snap.data().nome || nomeUsuario;
+                        avatar = snap.data().photoBase64 || null;
+                    }
+                } catch (e) {
+                    console.error('Erro ao buscar dados do usuário na denúncia IA:', e);
+                }
+            }
+            
+            await adicionarDenuncia({
+                usuario: { 
+                    nome: nomeUsuario,
+                    avatar: avatar || undefined
+                },
+                localizacao: reportData.location,
+                latitude: reportData.coordinates?.lat,
+                longitude: reportData.coordinates?.lng,
+                descricao: reportData.description,
+                tipos: reportData.aiAnalysis?.tags ?? [reportData.category],
+                categoria: reportData.category,
+                imagensLocais: reportData.photos,
+                imagensBase64: reportData.photosBase64,
+            });
+            sucesso = true;
+            setCurrentStep(Step.Success);
+        } catch (e) {
+            showAlert('error', 'Erro', 'Não foi possível enviar a denúncia. Tente novamente.');
+            console.error(e);
+        } finally {
+            setIsSubmitting(false);
+            if (!sucesso) {
+                submittingRef.current = false;
+            }
+        }
     };
 
     const handleCancel = () => {
@@ -125,7 +178,7 @@ export default function DenunciaIA() {
 
     // Success Screen
     if (currentStep === Step.Success) {
-        return <SuccessScreen onBackToHome={() => navigation.goBack()} />;
+        return <SuccessScreen onBackToHome={() => navigation.goBack()} reportData={reportData} />;
     }
 
     const getStepTitle = () => {
@@ -162,7 +215,11 @@ export default function DenunciaIA() {
                     <Step1PhotosLocation data={reportData} updateData={updateData} />
                 )}
                 {currentStep === Step.AnalysisAndDescription && (
-                    <Step2Description data={reportData} updateData={updateData} />
+                    <Step2Description 
+                        data={reportData} 
+                        updateData={updateData} 
+                        onGoBackToStep1={() => setCurrentStep(Step.PhotosAndLocation)}
+                    />
                 )}
                 {currentStep === Step.Review && (
                     <Step3Review data={reportData} onEditStep={handleEditStep} />
@@ -173,6 +230,7 @@ export default function DenunciaIA() {
                 currentStep={currentStep}
                 onPress={currentStep === 3 ? handleSubmit : handleNext}
                 label={currentStep === 3 ? 'Enviar Denúncia' : 'Continuar'}
+                loading={isSubmitting}
             />
 
             <CancelModal

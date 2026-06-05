@@ -119,17 +119,16 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: '#0E3B34',
   },
   backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: undefined,
-    height: undefined,
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(26, 77, 46, 0.65)',
-    backdropFilter: 'blur(1px)',
   },
   container: {
     flex: 1,
@@ -143,7 +142,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: width * 0.40,
+    marginTop: 40,
   },
   logo: {
     width: width * 0.80,

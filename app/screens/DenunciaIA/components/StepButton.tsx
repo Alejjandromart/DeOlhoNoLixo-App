@@ -6,9 +6,11 @@ interface StepButtonProps {
     currentStep: number;
     onPress: () => void;
     label: string;
+    disabled?: boolean;
+    loading?: boolean;
 }
 
-export default function StepButton({ currentStep, onPress, label }: StepButtonProps) {
+export default function StepButton({ currentStep, onPress, label, disabled, loading }: StepButtonProps) {
     const isLastStep = currentStep === 3;
     const insets = useSafeAreaInsets();
 
@@ -18,11 +20,17 @@ export default function StepButton({ currentStep, onPress, label }: StepButtonPr
                 style={[
                     styles.button,
                     isLastStep ? styles.buttonSubmit : styles.buttonContinue,
+                    (disabled || loading) && styles.buttonDisabled,
                 ]}
                 onPress={onPress}
+                disabled={disabled || loading}
                 activeOpacity={0.8}
             >
-                <Text style={styles.buttonText}>{label}</Text>
+                {loading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                    <Text style={styles.buttonText}>{label}</Text>
+                )}
             </TouchableOpacity>
         </View>
     );
@@ -52,6 +60,11 @@ const styles = StyleSheet.create({
     },
     buttonSubmit: {
         backgroundColor: '#059669',
+    },
+    buttonDisabled: {
+        backgroundColor: '#9CA3AF',
+        shadowOpacity: 0,
+        elevation: 0,
     },
     buttonText: {
         fontSize: 16,

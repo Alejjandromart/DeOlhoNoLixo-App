@@ -39,3 +39,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/")
 async def root():
     return {"status": "online", "service": "DeOlho NoLixo AI API"}
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "DeOlho NoLixo AI API"}

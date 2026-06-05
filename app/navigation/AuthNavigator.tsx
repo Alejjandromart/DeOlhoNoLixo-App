@@ -55,14 +55,11 @@ const RootStack = () => {
 
       try {
         const firstLogin = await AsyncStorage.getItem('@isFirstLogin');
-        console.log('🎯 Checking first login flag:', firstLogin);
         
         if (firstLogin === 'true') {
-          console.log('✅ First login detected! Will show Tutorial');
           await AsyncStorage.removeItem('@isFirstLogin');
           setTargetRoute('Tutorial');
         } else {
-          console.log('❌ Not first login, going to MainTabs');
           setTargetRoute('MainTabs');
         }
       } catch (error) {
@@ -74,11 +71,8 @@ const RootStack = () => {
     checkRoute();
   }, [user]);
 
-  console.log('🔑 AuthNavigator - Loading:', loading, 'User:', user?.email || 'Nenhum', 'Target:', targetRoute);
-
   // Show splash while checking auth or determining route for logged in user
   if (loading || (user && !targetRoute)) {
-    console.log('⏳ AuthNavigator showing loading screen...');
     return (
       <View style={styles.loadingContainer}>
         <Image
@@ -89,8 +83,6 @@ const RootStack = () => {
       </View>
     );
   }
-
-  console.log('✅ AuthNavigator loading complete, rendering stack navigator with initialRoute:', user ? targetRoute : 'Splash');
 
   return (
     <DenunciaProvider>

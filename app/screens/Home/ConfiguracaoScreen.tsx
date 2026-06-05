@@ -1,24 +1,98 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Switch, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Switch, ScrollView, Alert, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../navigation/RootStack';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 
 type ConfiguracaoScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Configuracao'>;
 
 const ConfiguracaoScreen = () => {
   const navigation = useNavigation<ConfiguracaoScreenNavigationProp>();
-  const { signOut } = useAuth();
+  const isFocused = useIsFocused();
+  const { signOut, user } = useAuth();
+  const [cidade, setCidade] = useState('');
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [gpsEnabled, setGpsEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    const carregarDados = async () => {
+      if (!user) return;
+      try {
+        const docRef = doc(db, 'users', user.uid);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          setCidade(snap.data().cidade ?? '');
+          setPhotoBase64(snap.data().photoBase64 ?? null);
+        }
+      } catch (e) {
+        console.error('Erro ao carregar dados nas configs:', e);
+      }
+    };
+
+    const verificarPermissoes = async () => {
+      try {
+        const { status: locationStatus } = await Location.getForegroundPermissionsAsync();
+        setGpsEnabled(locationStatus === 'granted');
+
+        const { status: cameraStatus } = await ImagePicker.getCameraPermissionsAsync();
+        setCameraEnabled(cameraStatus === 'granted');
+      } catch (e) {
+        console.error('Erro ao verificar permissões:', e);
+      }
+    };
+
+    if (isFocused) {
+      carregarDados();
+      verificarPermissoes();
+    }
+  }, [user?.uid, isFocused]);
+
+  const handleToggleGps = async () => {
+    const { status: currentStatus } = await Location.getForegroundPermissionsAsync();
+    if (currentStatus === 'granted') {
+      Alert.alert(
+        'Desativar Localização',
+        'Para desativar a permissão de localização, você precisa alterar as configurações do seu dispositivo nas configurações do sistema.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Configurações', onPress: () => Linking.openSettings() }
+        ]
+      );
+    } else {
+      const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+      setGpsEnabled(newStatus === 'granted');
+    }
+  };
+
+  const handleToggleCamera = async () => {
+    const { status: currentStatus } = await ImagePicker.getCameraPermissionsAsync();
+    if (currentStatus === 'granted') {
+      Alert.alert(
+        'Desativar Câmera',
+        'Para desativar a permissão de câmera, você precisa alterar as configurações do seu dispositivo nas configurações do sistema.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Configurações', onPress: () => Linking.openSettings() }
+        ]
+      );
+    } else {
+      const { status: newStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      setCameraEnabled(newStatus === 'granted');
+    }
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -45,13 +119,18 @@ const ConfiguracaoScreen = () => {
             end={{ x: 1, y: 1 }}
             style={styles.profileGradient}
           >
-            <Image
-              source={{ uri: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' }}
-              style={styles.profileImage}
-            />
+            {photoBase64 ? (
+              <Image source={{ uri: photoBase64 }} style={styles.profileImage} />
+            ) : (
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarText}>
+                  {user?.displayName ? user.displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : '?'}
+                </Text>
+              </View>
+            )}
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>Luane Araujo</Text>
-              <Text style={styles.profileLocation}>Itacoatiara, AM</Text>
+              <Text style={styles.profileName}>{user?.displayName || 'Usuário'}</Text>
+              <Text style={styles.profileLocation}>{cidade || 'Sem cidade definida'}</Text>
             </View>
             <View style={styles.profileAction}>
               <Feather name="chevron-right" size={20} color="#FFF" />
@@ -82,7 +161,7 @@ const ConfiguracaoScreen = () => {
               trackColor={{ false: "#E0E0E0", true: "#0B846C" }}
               thumbColor={"#FFFFFF"}
               ios_backgroundColor="#E0E0E0"
-              onValueChange={() => setGpsEnabled(prev => !prev)}
+              onValueChange={handleToggleGps}
               value={gpsEnabled}
             />
           </View>
@@ -98,7 +177,7 @@ const ConfiguracaoScreen = () => {
               trackColor={{ false: "#E0E0E0", true: "#0B846C" }}
               thumbColor={"#FFFFFF"}
               ios_backgroundColor="#E0E0E0"
-              onValueChange={() => setCameraEnabled(prev => !prev)}
+              onValueChange={handleToggleCamera}
               value={cameraEnabled}
             />
           </View>
@@ -198,6 +277,21 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.3)',
+  },
+  avatarCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '700',
   },
   profileInfo: {
     flex: 1,

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import React, { useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import {
   ActivityIndicator,
@@ -8,15 +8,13 @@ import {
   TouchableOpacity,
   Alert,
   TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-} from '@gorhom/bottom-sheet';
-import BotaoGoogle from '../../components/SocialButton';
 import CustomInput from '../../components/CustomInputCadastro';
 import { useAuth } from '../../context/AuthContext';
 
@@ -37,28 +35,17 @@ interface DadosLogin {
 
 const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro, abrirEsqueciSenha }, ref) => {
   const navigation = useNavigation<any>();
-  const { signIn, signInWithGoogle } = useAuth();
-  const sheetRef = useRef<BottomSheetModal>(null);
+  const { signIn } = useAuth();
+  const [visivel, setVisivel] = useState(false);
 
   // Refs para os campos de input
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
 
   useImperativeHandle(ref, () => ({
-    abrir: () => sheetRef.current?.present(),
-    fechar: () => sheetRef.current?.dismiss(),
+    abrir: () => setVisivel(true),
+    fechar: () => setVisivel(false),
   }));
-
-  const pontos = useMemo(() => ['70%'], []);
-  const renderBackdrop = (props: any) => (
-    <BottomSheetBackdrop
-      {...props}
-      appearsOnIndex={0}
-      disappearsOnIndex={-1}
-      backgroundColor="#005b4f"
-      opacity={0.5}
-    />
-  );
 
   // Estado do formulário
   const [dados, setDados] = useState<DadosLogin>({
@@ -118,7 +105,7 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
       }
 
       // Login bem-sucedido
-      sheetRef.current?.dismiss();
+      setVisivel(false);
       // navigation.navigate('Feed'); // Removido - AuthNavigator cuida disso automaticamente
     } catch (err: any) {
       console.error('Erro no login:', err);
@@ -130,153 +117,115 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
 
   const handleLoginPress = handleSignIn;
 
-  const handleGoogleLoginPress = async () => {
-    if (carregando) return;
-    setCarregando(true);
-
-    try {
-      const { error } = await signInWithGoogle();
-
-      if (error) {
-        if (error.code === '7') { // DEVELOPER_ERROR usually means configuration issue
-          Alert.alert('Erro de Configuração', 'Verifique o webClientId no AuthContext.');
-        } else if (error.code === '-5') { // SIGN_IN_CANCELLED
-          // User cancelled, do nothing
-          console.log('Login cancelado pelo usuário');
-        } else {
-          Alert.alert('Erro', 'Falha ao entrar com Google. Tente novamente.');
-          console.error(error);
-        }
-      } else {
-        // Login successful - AuthNavigator handles navigation
-        console.log('✅ Login com Google bem-sucedido!');
-        sheetRef.current?.dismiss();
-      }
-    } catch (err) {
-      console.error('Erro inesperado no Google Login:', err);
-      Alert.alert('Erro', 'Ocorreu um erro inesperado.');
-    } finally {
-      setCarregando(false);
-    }
-  };
-
   return (
-    <BottomSheetModal
-      ref={sheetRef}
-      snapPoints={pontos}
-      backdropComponent={renderBackdrop}
-      enablePanDownToClose={false}
-      keyboardBehavior="extend"
-      android_keyboardInputMode="adjustResize"
-      backgroundStyle={{ backgroundColor: 'transparent' }}
-      handleIndicatorStyle={{ backgroundColor: '#FFFFFF80', width: 48 }}
+    <Modal
+      visible={visivel}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setVisivel(false)}
     >
-      <LinearGradient
-        colors={['#076653', '#0E3B34']}
-        style={styles.cartao}
-      >
-        {/* Cabeçalho */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.botaoVoltar} onPress={() => sheetRef.current?.dismiss()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.titulo}>Login</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <BottomSheetScrollView
-          contentContainerStyle={styles.conteudo}
-          showsVerticalScrollIndicator={false}
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, justifyContent: 'flex-end' }}
         >
-          <Text style={styles.boasVindas}>Bem-Vindo de Volta</Text>
-
-          <CustomInput
-            ref={emailInputRef}
-            rotulo="E-mail"
-            sugestao="Digite seu e-mail"
-            valor={dados.email}
-            aoAlterarTexto={(t) => atualizar('email', t)}
-            nomeIcone="person-outline"
-            tipoTeclado="email-address"
-            erro={!!emailError}
-            tipoRetorno="next"
-            aoEnviar={() => passwordInputRef.current?.focus()}
-          />
-          {emailError ? <Text style={styles.erro}>{emailError}</Text> : null}
-
-          <CustomInput
-            ref={passwordInputRef}
-            rotulo="Senha*"
-            sugestao="Digite sua senha"
-            valor={dados.senha}
-            aoAlterarTexto={(t) => atualizar('senha', t)}
-            nomeIcone="lock-closed-outline"
-            entradaSegura
-            mostrarToggleSenha
-            senhaVisivel={mostrarSenha}
-            aoAlternarSenha={() => setMostrarSenha((v) => !v)}
-            erro={!!passwordError}
-            tipoRetorno="done"
-            aoEnviar={handleLoginPress}
-          />
-          {passwordError ? <Text style={styles.erro}>{passwordError}</Text> : null}
-
-          <TouchableOpacity
-            style={{ alignSelf: 'flex-end', marginTop: 8 }}
-            onPress={() => {
-              sheetRef.current?.dismiss();
-              setTimeout(() => {
-                abrirEsqueciSenha?.();
-              }, 300);
-            }}
+          <LinearGradient
+            colors={['#076653', '#0E3B34']}
+            style={styles.cartao}
           >
-            <Text style={styles.esqueceuSenha}>Esqueceu a senha?</Text>
-          </TouchableOpacity>
+            {/* Cabeçalho */}
+            <View style={styles.header}>
+              <TouchableOpacity style={styles.botaoVoltar} onPress={() => setVisivel(false)}>
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.titulo}>Login</Text>
+              <View style={{ width: 40 }} />
+            </View>
 
-          <TouchableOpacity
-            style={[
-              styles.loginButton,
-              carregando && styles.loginButtonDisabled
-            ]}
-            onPress={handleLoginPress}
-            activeOpacity={0.8}
-            disabled={carregando}
-          >
-            {carregando ? (
-              <ActivityIndicator color="#115E4C" />
-            ) : (
-              <Text style={styles.loginButtonText}>Entrar</Text>
-            )}
-          </TouchableOpacity>
+            <ScrollView
+              contentContainerStyle={styles.conteudo}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.boasVindas}>Bem-Vindo de Volta</Text>
 
-          <View style={styles.divisor}>
-            <View style={styles.linha} />
-            <Text style={styles.divisorTexto}>Ou</Text>
-            <View style={styles.linha} />
-          </View>
+              <CustomInput
+                ref={emailInputRef}
+                rotulo="E-mail"
+                sugestao="Digite seu e-mail"
+                valor={dados.email}
+                aoAlterarTexto={(t) => atualizar('email', t)}
+                nomeIcone="person-outline"
+                tipoTeclado="email-address"
+                erro={!!emailError}
+                tipoRetorno="next"
+                aoEnviar={() => passwordInputRef.current?.focus()}
+              />
+              {emailError ? <Text style={styles.erro}>{emailError}</Text> : null}
 
-          <BotaoGoogle
-            texto="Continuar com Google"
-            aoPressionar={handleGoogleLoginPress}
-            carregando={carregando}
-          />
+              <CustomInput
+                ref={passwordInputRef}
+                rotulo="Senha*"
+                sugestao="Digite sua senha"
+                valor={dados.senha}
+                aoAlterarTexto={(t) => atualizar('senha', t)}
+                nomeIcone="lock-closed-outline"
+                entradaSegura
+                mostrarToggleSenha
+                senhaVisivel={mostrarSenha}
+                aoAlternarSenha={() => setMostrarSenha((v) => !v)}
+                erro={!!passwordError}
+                tipoRetorno="done"
+                aoEnviar={handleLoginPress}
+              />
+              {passwordError ? <Text style={styles.erro}>{passwordError}</Text> : null}
 
-          <TouchableOpacity
-            style={{ alignItems: 'center', marginTop: 8 }}
-            onPress={() => {
-              sheetRef.current?.dismiss();
-              setTimeout(() => {
-                abrirCadastro?.();
-              }, 300);
-            }}
-          >
-            <Text style={styles.rodape}>
-              Ainda não tem conta? <Text style={styles.link}>Cadastre-se</Text>
-            </Text>
-          </TouchableOpacity>
-        </BottomSheetScrollView>
-      </LinearGradient>
-    </BottomSheetModal>
+              <TouchableOpacity
+                style={{ alignSelf: 'flex-end', marginTop: 8 }}
+                onPress={() => {
+                  setVisivel(false);
+                  setTimeout(() => {
+                    abrirEsqueciSenha?.();
+                  }, 300);
+                }}
+              >
+                <Text style={styles.esqueceuSenha}>Esqueceu a senha?</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.loginButton,
+                  carregando && styles.loginButtonDisabled
+                ]}
+                onPress={handleLoginPress}
+                activeOpacity={0.8}
+                disabled={carregando}
+              >
+                {carregando ? (
+                  <ActivityIndicator color="#115E4C" />
+                ) : (
+                  <Text style={styles.loginButtonText}>Entrar</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ alignItems: 'center', marginTop: 8 }}
+                onPress={() => {
+                  setVisivel(false);
+                  setTimeout(() => {
+                    abrirCadastro?.();
+                  }, 300);
+                }}
+              >
+                <Text style={styles.rodape}>
+                  Ainda não tem conta? <Text style={styles.link}>Cadastre-se</Text>
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </LinearGradient>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
   );
 });
 
@@ -353,22 +302,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.5
-  },
-  divisor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16
-  },
-  linha: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#FFFFFF60'
-  },
-  divisorTexto: {
-    color: '#FFFFFF',
-    marginHorizontal: 12,
-    fontWeight: '700',
-    fontSize: 14,
   },
   rodape: {
     color: '#FFFFFF',

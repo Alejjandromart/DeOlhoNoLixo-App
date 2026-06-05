@@ -9,12 +9,23 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "BACKEND_URL": "https://deolho-ia.onrender.com",
+        "BACKEND_API_KEY": "287e60096af7564e10abab86e726dcca6217b2c52de91a423ef923947d2374df"
+      }
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "BACKEND_URL": "https://deolho-ia.onrender.com",
+        "BACKEND_API_KEY": "287e60096af7564e10abab86e726dcca6217b2c52de91a423ef923947d2374df"
       }
     }
   },

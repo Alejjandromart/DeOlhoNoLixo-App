@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,43 +11,68 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useDenuncias } from '../../context/DenunciaContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import BottomTabBar from '../../components/BottomTabBar';
 import DenunciaCard from '../../components/Feed/DenunciaCard';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 const FeedScreen: React.FC = () => {
   const { user, signOut } = useAuth();
-  const denunciaContext = useDenuncias();
+  const { denuncias, loadingFeed, curtirDenuncia, adicionarComentario } = useDenuncias();
   const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
   const [refreshing, setRefreshing] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [filterOption, setFilterOption] = useState<'recente' | 'proximo'>('recente');
   const insets = useSafeAreaInsets();
 
-  const denuncias = denunciaContext?.denuncias || [];
-  const curtirDenuncia = denunciaContext?.curtirDenuncia || ((id: number) => { });
-  const adicionarComentario = denunciaContext?.adicionarComentario || ((denunciaId: number, texto: string, usuario: any) => { });
+  const [userData, setUserData] = useState<{ nome: string; avatar: string | null }>({
+    nome: user?.displayName || user?.email?.split('@')[0] || 'Usuário',
+    avatar: null,
+  });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user) return;
+      try {
+        const docRef = doc(db, 'users', user.uid);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          setUserData({
+            nome: snap.data().displayName || snap.data().nome || user.displayName || user.email?.split('@')[0] || 'Usuário',
+            avatar: snap.data().photoBase64 || null,
+          });
+        }
+      } catch (e) {
+        console.error('Erro ao buscar dados do usuário no feed:', e);
+      }
+    };
+    if (isFocused) {
+      fetchUserData();
+    }
+  }, [user?.uid, isFocused]);
+
+  if (loadingFeed) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }}>
+        <Text style={{ color: '#0A7D6F', marginTop: 10 }}>Carregando denúncias...</Text>
+      </View>
+    );
+  }
 
   const handleFilterSelect = (option: 'recente' | 'proximo') => {
     setFilterOption(option);
     setShowFilterMenu(false);
   };
 
-  const handleAddComment = (denunciaId: number, texto: string) => {
-    console.log('🔵 FeedScreen handleAddComment chamado');
-    console.log('📋 DenunciaId:', denunciaId);
-    console.log('💭 Texto:', texto);
-    console.log('👤 User email:', user?.email);
-
+  const handleAddComment = (denunciaId: string, texto: string) => {
     const usuario = {
-      nome: user?.email?.split('@')[0] || 'Usuário',
-      avatar: undefined,
+      nome: userData.nome,
+      avatar: userData.avatar || null,
     };
 
-    console.log('👤 Usuario criado:', usuario);
-    console.log('🔧 Chamando adicionarComentario...');
     adicionarComentario(denunciaId, texto, usuario);
-    console.log('✅ adicionarComentario chamado');
   };
 
   const handleLogout = async () => {
@@ -63,7 +88,7 @@ const FeedScreen: React.FC = () => {
     }, 1000);
   };
 
-  const userName = user?.email?.split('@')[0] || 'Usuário';
+  const userName = userData.nome;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
@@ -143,26 +168,27 @@ const FeedScreen: React.FC = () => {
             ) : (
               <View style={styles.feedCards}>
                 {denuncias.map((denuncia) => (
-                  <DenunciaCard
-                    key={denuncia.id}
-                    usuario={denuncia.usuario}
-                    localizacao={denuncia.localizacao}
-                    status={denuncia.status}
-                    tempoAtras={denuncia.tempoAtras}
-                    descricao={denuncia.descricao}
-                    imagens={denuncia.imagens}
-                    likes={denuncia.likes}
-                    isLiked={denuncia.isLiked}
-                    tipos={denuncia.tipos}
-                    latitude={denuncia.latitude}
-                    longitude={denuncia.longitude}
-                    comentarios={denuncia.comentarios}
-                    onLike={() => curtirDenuncia(denuncia.id)}
-                    onComment={() => console.log('Comentar', denuncia.id)}
-                    onShare={() => console.log('Compartilhar', denuncia.id)}
-                    onBookmark={() => console.log('Salvar', denuncia.id)}
-                    onAddComment={(texto) => handleAddComment(denuncia.id, texto)}
-                  />
+                   <DenunciaCard
+                     key={denuncia.id}
+                     id={denuncia.id}
+                     usuario={denuncia.usuario}
+                     localizacao={denuncia.localizacao}
+                     status={denuncia.status}
+                     tempoAtras={denuncia.tempoAtras}
+                     descricao={denuncia.descricao}
+                     imagens={denuncia.imagens}
+                     likes={denuncia.likes}
+                     isLiked={denuncia.isLiked}
+                     tipos={denuncia.tipos}
+                     latitude={denuncia.latitude}
+                     longitude={denuncia.longitude}
+                     comentarios={denuncia.comentarios}
+                     onLike={() => curtirDenuncia(denuncia.id)}
+                     onComment={() => console.log('Comentar', denuncia.id)}
+                     onShare={() => console.log('Compartilhar', denuncia.id)}
+                     onBookmark={() => console.log('Salvar', denuncia.id)}
+                     onAddComment={(texto) => handleAddComment(denuncia.id, texto)}
+                   />
                 ))}
               </View>
             )}

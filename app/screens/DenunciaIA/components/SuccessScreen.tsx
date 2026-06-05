@@ -32,9 +32,9 @@ export default function SuccessScreen({ onBackToHome }: SuccessScreenProps) {
                     Denúncia Enviada com Sucesso!
                 </Animated.Text>
                 <Animated.Text style={styles.subtitle} entering={FadeIn.delay(400)}>
-                    Agradecemos sua colaboração. Sua denúncia foi registrada e será analisada pela nossa equipe.
+                    Agradecemos sua colaboração. Sua denúncia foi registrada no feed e encaminhada automaticamente por e-mail aos órgãos competentes.
                 </Animated.Text>
-                <Animated.View entering={FadeIn.delay(600)}>
+                <Animated.View entering={FadeIn.delay(600)} style={styles.buttonContainer}>
                     <TouchableOpacity style={styles.button} onPress={handleGoToFeed}>
                         <Text style={styles.buttonText}>Ir para o Feed</Text>
                     </TouchableOpacity>
@@ -78,11 +78,16 @@ const styles = StyleSheet.create({
         marginBottom: 30,
         lineHeight: 24,
     },
+    buttonContainer: {
+        width: '100%',
+        alignItems: 'center',
+    },
     button: {
         backgroundColor: '#A4D65E',
         borderRadius: 30,
         paddingVertical: 16,
         paddingHorizontal: 40,
+        width: '100%',
         alignItems: 'center',
         justifyContent: 'center',
     },

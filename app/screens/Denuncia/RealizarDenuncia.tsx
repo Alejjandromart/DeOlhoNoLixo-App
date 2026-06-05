@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -6,6 +6,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useAuth } from '../../context/AuthContext';
 import { useDenuncias } from '../../context/DenunciaContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import Header from './components/Header';
 import ImagePickerComponent from './components/ImagePicker';
 import LocationPicker from './components/LocationPicker';
@@ -20,6 +22,7 @@ interface ImagemSelecionada {
   uri: string;
   type: string;
   name: string;
+  base64?: string;
 }
 
 interface LocalizacaoData {
@@ -49,6 +52,7 @@ export default function RealizarDenuncia() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showAddTypeModal, setShowAddTypeModal] = useState(false);
   const [denunciaEnviada, setDenunciaEnviada] = useState(false);
+  const submittingRef = useRef(false);
 
   // Verificar se há alterações não salvas
   const temAlteracoes = () => {
@@ -134,10 +138,11 @@ export default function RealizarDenuncia() {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
+        quality: 0.2,
+        base64: true,
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -145,6 +150,7 @@ export default function RealizarDenuncia() {
           uri: result.assets[0].uri,
           type: 'image/jpeg',
           name: `foto_${Date.now()}.jpg`,
+          base64: result.assets[0].base64 || undefined,
         };
         setImagens([...imagens, novaImagem]);
       }
@@ -163,10 +169,11 @@ export default function RealizarDenuncia() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
-        quality: 0.8,
+        quality: 0.2,
         selectionLimit: 4 - imagens.length,
+        base64: true,
       });
 
       if (!result.canceled) {
@@ -174,6 +181,7 @@ export default function RealizarDenuncia() {
           uri: asset.uri,
           type: 'image/jpeg',
           name: `imagem_${Date.now()}_${index}.jpg`,
+          base64: asset.base64 || undefined,
         }));
         setImagens([...imagens, ...novasImagens].slice(0, 4));
       }
@@ -229,29 +237,45 @@ export default function RealizarDenuncia() {
 
   // Enviar denúncia
   const enviarDenuncia = async () => {
+    if (submittingRef.current) return;
     if (!validarFormulario()) return;
 
+    let sucesso = false;
     try {
+      submittingRef.current = true;
       setCarregando(true);
 
-      // Extrair nome do usuário do email
-      const nomeUsuario = user?.email?.split('@')[0] || 'Usuário';
-      const nomeFormatado = nomeUsuario.charAt(0).toUpperCase() + nomeUsuario.slice(1);
+      let nomeUsuario = user?.email?.split('@')[0] || 'Usuário';
+      let nomeFormatado = nomeUsuario.charAt(0).toUpperCase() + nomeUsuario.slice(1);
+      let avatar = null;
+
+      if (user) {
+        try {
+          const docRef = doc(db, 'users', user.uid);
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            nomeFormatado = snap.data().displayName || snap.data().nome || nomeFormatado;
+            avatar = snap.data().photoBase64 || null;
+          }
+        } catch (e) {
+          console.error('Erro ao buscar dados do usuário na denúncia manual:', e);
+        }
+      }
 
       // Adicionar denúncia ao contexto
       if (denunciaContext?.adicionarDenuncia) {
-        denunciaContext.adicionarDenuncia({
+        await denunciaContext.adicionarDenuncia({
           usuario: {
             nome: nomeFormatado,
-            avatar: undefined,
+            avatar: avatar || undefined,
           },
           localizacao: localizacao!.endereco,
           descricao: descricao.trim(),
-          imagens: imagens.map(img => img.uri),
+          imagensLocais: imagens.map(img => img.uri),
+          imagensBase64: imagens.map(img => img.base64 ? `data:image/jpeg;base64,${img.base64}` : ''),
           latitude: localizacao!.latitude,
           longitude: localizacao!.longitude,
           tipos: tiposSelecionados,
-          timestamp: new Date(),
         });
       } else {
         console.warn('Contexto de denúncias não disponível - denúncia não será adicionada ao feed');
@@ -259,6 +283,11 @@ export default function RealizarDenuncia() {
 
       // Marcar como enviada para permitir navegação
       setDenunciaEnviada(true);
+      sucesso = true;
+
+      const localizacaoEndereco = localizacao!.endereco;
+      const descricaoTexto = descricao.trim();
+      const categoriaTexto = tiposSelecionados[0] || 'Ambiental';
 
       // Limpar formulário
       setImagens([]);
@@ -268,7 +297,11 @@ export default function RealizarDenuncia() {
 
       // Navegar para tela de confirmação
       setTimeout(() => {
-        navigation.navigate('DenunciaEnviada' as never);
+        navigation.navigate('DenunciaEnviada' as never, {
+          localizacao: localizacaoEndereco,
+          descricao: descricaoTexto,
+          categoria: categoriaTexto
+        } as never);
       }, 100);
 
     } catch (error) {
@@ -276,6 +309,9 @@ export default function RealizarDenuncia() {
       Alert.alert('Erro', 'Não foi possível enviar a denúncia. Tente novamente.');
     } finally {
       setCarregando(false);
+      if (!sucesso) {
+        submittingRef.current = false;
+      }
     }
   };
 

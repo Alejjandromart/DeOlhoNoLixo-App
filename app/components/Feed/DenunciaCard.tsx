@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Modal, Share, Platform, StatusBar } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import LikeExplosion from '../LikeExplosion';
@@ -15,8 +15,11 @@ import {
   CommentInput,
 } from './components';
 import { Comentario } from '../../context/DenunciaContext';
+import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 interface DenunciaCardProps {
+  id: string;
   usuario: {
     nome: string;
     avatar?: string;
@@ -40,6 +43,7 @@ interface DenunciaCardProps {
 }
 
 export default function DenunciaCard({
+  id,
   usuario,
   localizacao,
   status,
@@ -62,6 +66,52 @@ export default function DenunciaCard({
   const [showLikeExplosion, setShowLikeExplosion] = useState(false);
   const [localIsLiked, setLocalIsLiked] = useState(isLiked);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
+  const [localComments, setLocalComments] = useState<Comentario[]>(comentarios);
+
+  const helperCalcularTempoAtras = (date: Date): string => {
+    const diff = Date.now() - date.getTime();
+    const min = Math.floor(diff / 60_000);
+    const h = Math.floor(diff / 3_600_000);
+    const d = Math.floor(diff / 86_400_000);
+    if (min < 1) return 'agora';
+    if (min < 60) return `${min}min`;
+    if (h < 24) return `${h}h`;
+    if (d === 1) return '1 dia';
+    if (d < 7) return `${d} dias`;
+    if (d < 30) return `${Math.floor(d / 7)} sem.`;
+    return `${Math.floor(d / 30)} mês`;
+  };
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    
+    if (expanded || commentsModalVisible) {
+      const q = query(
+        collection(db, 'denuncias', id, 'comentarios'),
+        orderBy('timestamp', 'asc')
+      );
+      
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const commentsList = snapshot.docs.map(docSnap => {
+          const data = docSnap.data();
+          const ts = (data.timestamp as Timestamp)?.toDate?.() ?? new Date();
+          return {
+            id: docSnap.id,
+            userId: data.userId ?? '',
+            usuario: data.usuario ?? { nome: 'Usuário' },
+            texto: data.texto ?? '',
+            timestamp: ts,
+            tempoAtras: helperCalcularTempoAtras(ts),
+          };
+        });
+        setLocalComments(commentsList);
+      }, (error) => {
+        console.error("Erro ao carregar comentários:", error);
+      });
+    }
+
+    return () => unsubscribe();
+  }, [expanded, commentsModalVisible, id]);
 
   const handleCardPress = () => {
     setExpanded(true);
@@ -97,9 +147,20 @@ export default function DenunciaCard({
 
   const handleShare = async () => {
     try {
+      const hasMaps = latitude != null && longitude != null;
+      const mapsUrl = hasMaps ? `https://www.google.com/maps?q=${latitude},${longitude}` : null;
+      const lines = [
+        '🚨 *DeOlhoNoLixo* — Denúncia de Descarte Irregular',
+        '',
+        `📍 Local: ${localizacao}`,
+        `📝 ${descricao}`,
+      ];
+      if (mapsUrl) lines.push(`\n🗺️ Ver local: ${mapsUrl}`);
+      if (id) lines.push(`\n📲 Abrir no app: deolhoapp:///denuncia/${id}`);
+
       await Share.share({
-        message: `${descricao}\n\nLocalização: ${localizacao}`,
-        title: 'Compartilhar Denúncia - DeOlhoNoLixo',
+        message: lines.join('\n'),
+        title: 'DeOlhoNoLixo — Denúncia de Descarte Irregular',
       });
       onShare?.();
     } catch (error) {
@@ -244,6 +305,9 @@ export default function DenunciaCard({
               onLikePress={handleLikePress}
               descricao={descricao}
               localizacao={localizacao}
+              denunciaId={id}
+              latitude={latitude}
+              longitude={longitude}
             />
 
             <View style={styles.expandedBody}>
@@ -274,7 +338,7 @@ export default function DenunciaCard({
               <View style={styles.divider} />
 
               {/* Seção de Comentários */}
-              <CommentsSection comentarios={comentarios} />
+              <CommentsSection comentarios={localComments} />
             </View>
           </ScrollView>
 
@@ -296,7 +360,7 @@ export default function DenunciaCard({
       <CommentsModal
         visible={commentsModalVisible}
         onClose={handleCloseComments}
-        comentarios={comentarios}
+        comentarios={localComments}
         onAddComment={onAddComment}
       />
     </>

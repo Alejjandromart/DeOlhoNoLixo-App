@@ -10,7 +10,15 @@ class Settings(BaseSettings):
     RATE_LIMIT: str = "10/minute"
     DEBUG: bool = True
 
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_SENDER: str = ""
+    EMAIL_RECIPIENT: str = "semulsp@pmm.am.gov.br"
+
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()

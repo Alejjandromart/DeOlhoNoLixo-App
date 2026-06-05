@@ -9,7 +9,7 @@ interface TrashTypeSelectorProps {
   onAdicionarTipo: () => void;
 }
 
-const TIPOS_PADRAO = ['Doméstico', 'Hospitalar', 'Entulho', 'Eletrônico'];
+const TIPOS_PADRAO = ['Doméstico', 'Hospitalar', 'Industrial', 'Entulho', 'Eletrônico', 'Ambiental'];
 
 export default function TrashTypeSelector({
   tiposSelecionados,

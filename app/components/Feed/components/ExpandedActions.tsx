@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Share } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Share, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import LikeExplosion from '../../LikeExplosion';
 
@@ -9,6 +9,9 @@ interface ExpandedActionsProps {
   onLikePress: () => void;
   descricao?: string;
   localizacao?: string;
+  denunciaId?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export default function ExpandedActions({
@@ -16,7 +19,10 @@ export default function ExpandedActions({
   isLiked,
   onLikePress,
   descricao = '',
-  localizacao = ''
+  localizacao = '',
+  denunciaId = '',
+  latitude,
+  longitude,
 }: ExpandedActionsProps) {
   const [showExplosion, setShowExplosion] = useState(false);
 
@@ -30,9 +36,29 @@ export default function ExpandedActions({
 
   const handleShare = async () => {
     try {
+      const hasMaps = latitude != null && longitude != null;
+      const mapsUrl = hasMaps
+        ? `https://www.google.com/maps?q=${latitude},${longitude}`
+        : null;
+
+      const lines = [
+        '🚨 *DeOlhoNoLixo* — Denúncia de Descarte Irregular',
+        '',
+        `📍 Local: ${localizacao}`,
+        `📝 ${descricao}`,
+      ];
+
+      if (mapsUrl) {
+        lines.push(`\n🗺️ Ver local: ${mapsUrl}`);
+      }
+      if (denunciaId) {
+        lines.push(`\n📲 Abrir no app: deolhoapp:///denuncia/${denunciaId}`);
+      }
+
       await Share.share({
-        message: `${descricao}\n\nLocalização: ${localizacao}`,
-        title: 'Compartilhar Denúncia - DeOlhoNoLixo',
+        message: lines.join('\n'),
+        title: 'DeOlhoNoLixo — Denúncia de Descarte Irregular',
+        ...(Platform.OS === 'ios' && mapsUrl ? { url: mapsUrl } : {}),
       });
     } catch (error) {
       console.error('Erro ao compartilhar:', error);

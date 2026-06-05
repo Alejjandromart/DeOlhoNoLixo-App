@@ -1,3 +1,84 @@
+# Task 3: Corrigir Telas Críticas + Limpeza de Código Morto
+
+> **Dependências:** Task 1 (firebase.ts), Task 2 (DenunciaContext com Firestore)
+> **Arquitetura:** React Native screens + Firebase Auth `updateProfile` + Firestore `users/`
+> **Tech Stack:** TypeScript, firebase/auth, firebase/firestore, React Navigation
+
+---
+
+## 🛠️ Especificação
+
+### 1. Objetivo
+Fechar os 3 bugs críticos que impedem o app de funcionar como produto real:
+1. **ProfileScreen**: exibe dados hardcoded e botão salvar não faz nada
+2. **DenunciaIA.handleSubmit**: vai para tela de sucesso sem salvar nada
+3. **RootStack.tsx**: arquivo morto que causa confusão e nunca é usado
+
+Além disso, remover os ~15 `console.log` de debug espalhados no código de produção.
+
+### 2. Modelo de Dados — Coleção `users`
+
+```
+users/{uid}
+├── displayName: string    (nome de exibição)
+├── email: string
+├── cidade?: string
+├── updatedAt: Timestamp
+```
+
+Criado automaticamente no primeiro `signUp` e atualizado pelo ProfileScreen.
+
+### 3. Fluxo ProfileScreen
+```
+Montar → carregar doc users/{uid} do Firestore
+Editar campos → estado local
+Pressionar "Salvar" →
+  updateProfile(auth.currentUser, { displayName })
+  setDoc(doc(db,'users',uid), { displayName, email, cidade, updatedAt })
+  Alert de sucesso
+```
+
+### 4. Fluxo DenunciaIA Submit
+```
+Step 3 (Revisão) → pressionar "Enviar Denúncia"
+  → DenunciaIA.handleSubmit()
+  → chamar adicionarDenuncia(reportData) do DenunciaContext
+  → se sucesso → setCurrentStep(Step.Success)
+  → se erro → showAlert('error', ...)
+```
+
+O `reportData.photos` já contém URIs locais. O `adicionarDenuncia` da Task 2 faz o upload para Storage automaticamente.
+
+### 5. Criação do perfil no Cadastro
+Além do `signUp` com Firebase Auth, o `Cadastro.tsx` deve criar o doc `users/{uid}` com os dados do formulário (`nomeCompleto`, `nomeUsuario`). Isso garante que o nome aparece no feed e no perfil.
+
+### 6. Edge Cases
+- **Doc `users/{uid}` não existe** (usuários criados antes desta task): `getDoc` retorna `exists() === false` → usar dados do `auth.currentUser` como fallback
+- **`updateProfile` e `setDoc` falham**: tratar separadamente, mostrar erro específico
+- **Nome vazio no submit**: validar antes de chamar `updateProfile`
+- **Navegar para DenunciaEnviada sem salvar**: o `beforeRemove` listener do `RealizarDenuncia` já previne saída acidental — o mesmo padrão deve ser aplicado no DenunciaIA (Task já trata via `showCancelModal`)
+
+### 7. Fora do Escopo
+- Não implementar upload de foto de perfil (câmera → Storage) — baixa prioridade para os testes
+- Não implementar edição de e-mail (requer reautenticação no Firebase)
+- Não implementar deleção de conta
+
+### 8. Critérios de Aceite
+- [ ] ProfileScreen exibe nome e e-mail reais do usuário logado
+- [ ] Botão "Salvar" persiste dados e exibe Alert de confirmação
+- [ ] Fechar app e reabrir mantém dados do perfil
+- [ ] DenunciaIA → tela de sucesso → denúncia aparece no feed global
+- [ ] `RootStack.tsx` deletado — `git status` não mostra o arquivo
+- [ ] Zero `console.log` em AuthContext, AuthNavigator e FeedScreen
+- [ ] `npx expo start --clear` sem warnings de console
+
+---
+
+## 📂 Arquivos
+
+### `app/screens/Home/ProfileScreen.tsx` — REESCREVER
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Image, TouchableOpacity,
@@ -11,14 +92,12 @@ import { updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
-import * as ImagePicker from 'expo-image-picker';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [cidade, setCidade] = useState('');
-  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
 
@@ -33,9 +112,6 @@ const ProfileScreen = () => {
           const data = snap.data();
           setDisplayName(data.displayName ?? user.displayName ?? '');
           setCidade(data.cidade ?? '');
-          if (data.photoBase64) {
-            setPhotoBase64(data.photoBase64);
-          }
         } else {
           // Usuário sem doc — usar dados do Auth como fallback
           setDisplayName(user.displayName ?? user.email?.split('@')[0] ?? '');
@@ -49,20 +125,6 @@ const ProfileScreen = () => {
     carregar();
   }, [user?.uid]);
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.2, // Compress the image to save Firestore space
-      base64: true, // We need base64 to save directly to Firestore
-    });
-
-    if (!result.canceled && result.assets[0].base64) {
-      setPhotoBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
-    }
-  };
-
   const handleSalvar = async () => {
     if (!user) return;
     if (!displayName.trim()) {
@@ -71,15 +133,13 @@ const ProfileScreen = () => {
     }
     try {
       setSalvando(true);
-      // Atualizar Firebase Auth (NUNCA enviar base64 pro photoURL do auth pois dá erro de "URL too long")
+      // Atualizar Firebase Auth
       await updateProfile(auth.currentUser!, { displayName: displayName.trim() });
-
       // Atualizar Firestore
       await setDoc(doc(db, 'users', user.uid), {
         displayName: displayName.trim(),
         email: user.email,
         cidade: cidade.trim(),
-        photoBase64: photoBase64,
         updatedAt: serverTimestamp(),
       }, { merge: true });
       Alert.alert('Sucesso', 'Perfil atualizado com sucesso!');
@@ -115,18 +175,11 @@ const ProfileScreen = () => {
         showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         <View style={styles.profileCardWrapper}>
-          <TouchableOpacity style={styles.imageContainer} onPress={pickImage} activeOpacity={0.8}>
-            {photoBase64 ? (
-              <Image source={{ uri: photoBase64 }} style={styles.avatarCircle} />
-            ) : (
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{iniciais}</Text>
-              </View>
-            )}
-            <View style={styles.cameraBadge}>
-              <Feather name="camera" size={16} color="white" />
+          <View style={styles.imageContainer}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{iniciais}</Text>
             </View>
-          </TouchableOpacity>
+          </View>
           <View style={styles.profileCard}>
             <LinearGradient colors={['#076653', '#0A4338']} style={styles.profileGradient}>
               <Text style={styles.profileName}>{displayName || 'Seu nome'}</Text>
@@ -191,13 +244,6 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 5,
   },
   avatarText: { color: 'white', fontSize: 36, fontWeight: '700' },
-  cameraBadge: {
-    position: 'absolute', bottom: 0, right: 0,
-    backgroundColor: '#076653', width: 36, height: 36, borderRadius: 18,
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 3, borderColor: 'white',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 3,
-  },
   profileCard: { width: '100%', borderRadius: 25, overflow: 'hidden', elevation: 8 },
   profileGradient: { alignItems: 'center', paddingTop: 65, paddingBottom: 25, paddingHorizontal: 20 },
   profileName: { color: 'white', fontSize: 22, fontWeight: 'bold', marginBottom: 2 },
@@ -218,3 +264,130 @@ const styles = StyleSheet.create({
   },
   saveButtonText: { color: 'white', fontSize: 17, fontWeight: 'bold', letterSpacing: 0.5 },
 });
+```
+
+---
+
+### `app/screens/DenunciaIA/DenunciaIA.tsx` — ALTERAR `handleSubmit`
+
+```diff
++ import { useDenuncias } from '../../context/DenunciaContext';
+
+  export default function DenunciaIA() {
+    const navigation = useNavigation();
+    const { user } = useAuth();
++   const { adicionarDenuncia } = useDenuncias();
+    ...
+
+-   const handleSubmit = () => {
+-     console.log('Submitting report:', reportData);
+-     setCurrentStep(Step.Success);
+-   };
+
++   const handleSubmit = async () => {
++     try {
++       const nomeUsuario = user?.displayName
++         ?? user?.email?.split('@')[0]
++         ?? 'Usuário';
++       await adicionarDenuncia({
++         usuario: { nome: nomeUsuario },
++         localizacao: reportData.location,
++         latitude: reportData.coordinates?.lat,
++         longitude: reportData.coordinates?.lng,
++         descricao: reportData.description,
++         tipos: reportData.aiAnalysis?.tags ?? [reportData.category],
++         imagensLocais: reportData.photos,
++       });
++       setCurrentStep(Step.Success);
++     } catch (e) {
++       showAlert('error', 'Erro', 'Não foi possível enviar a denúncia. Tente novamente.');
++     }
++   };
+```
+
+---
+
+### `app/screens/Auth/Cadastro.tsx` — CRIAR DOC `users/{uid}` NO SIGNUP
+
+Após `signUp` bem-sucedido, adicionar:
+
+```diff
+  const { error } = await signUp(dados.email, dados.senha);
+  if (!error) {
++   // Criar perfil no Firestore com os dados do formulário
++   const { getAuth } = await import('firebase/auth');
++   const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
++   const { db } = await import('../../lib/firebase');
++   const currentUser = getAuth().currentUser;
++   if (currentUser) {
++     await setDoc(doc(db, 'users', currentUser.uid), {
++       displayName: dados.nomeCompleto.trim(),
++       email: dados.email,
++       cidade: '',
++       updatedAt: serverTimestamp(),
++     });
++     // Também atualiza Firebase Auth displayName
++     const { updateProfile } = await import('firebase/auth');
++     await updateProfile(currentUser, { displayName: dados.nomeCompleto.trim() });
++   }
+    sheetRef.current?.dismiss();
+  }
+```
+
+---
+
+### `app/navigation/AuthNavigator.tsx` — REMOVER CONSOLE.LOGS
+
+Remover todas as chamadas `console.log` e `console.warn` (aproximadamente 10 ocorrências).
+Manter apenas `console.error` para erros reais.
+
+---
+
+### `app/context/AuthContext.tsx` — REMOVER CONSOLE.LOGS
+
+Remover `console.log('🔄 Auth provider mounting...')`, `console.log('✅ Fonts loaded...')` e similares.
+
+---
+
+### `app/screens/Home/FeedScreen.tsx` — REMOVER CONSOLE.LOGS
+
+Remover `console.log('🔵 FeedScreen handleAddComment...')` e similares no `handleAddComment`.
+
+---
+
+### [DELETE] `app/navigation/RootStack.tsx`
+
+```bash
+# Deletar o arquivo
+git rm app/navigation/RootStack.tsx
+```
+
+Verificar que não há nenhum `import` deste arquivo em outro lugar:
+```bash
+grep -r "RootStack" app/
+# Deve retornar vazio
+```
+
+---
+
+## Comandos
+
+```bash
+# Deletar arquivo morto
+git rm "app/navigation/RootStack.tsx"
+
+# Verificar imports
+grep -r "RootStack" app/
+
+# Testar localmente
+npx expo start --clear
+```
+
+---
+
+## Commit
+
+```bash
+git add -A
+git commit -m "fix: ProfileScreen with real Firebase data, DenunciaIA submit persists to Firestore, remove dead code and console.logs"
+```

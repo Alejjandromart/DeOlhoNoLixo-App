@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Comentario } from '../../context/DenunciaContext';
@@ -61,7 +61,15 @@ export default function CommentsModal({ visible, onClose, comentarios, onAddComm
                             comentarios.map((comentario, index) => (
                                 <View key={index} style={styles.commentItem}>
                                     <View style={styles.commentAvatar}>
-                                        <Ionicons name="person-circle" size={32} color="#CCC" />
+                                        {comentario.usuario?.avatar ? (
+                                            <Image source={{ uri: comentario.usuario.avatar }} style={styles.avatarImage} />
+                                        ) : (
+                                            <View style={styles.avatarPlaceholder}>
+                                                <Text style={styles.avatarInitials}>
+                                                    {((typeof comentario.usuario === 'string' ? comentario.usuario : comentario.usuario?.nome) || 'U').charAt(0).toUpperCase()}
+                                                </Text>
+                                            </View>
+                                        )}
                                     </View>
                                     <View style={styles.commentContent}>
                                         <Text style={styles.commentAuthor}>
@@ -193,6 +201,24 @@ const styles = StyleSheet.create({
     },
     commentAvatar: {
         marginRight: 12,
+    },
+    avatarImage: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+    },
+    avatarPlaceholder: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#0A7D6F',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarInitials: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: '700',
     },
     commentContent: {
         flex: 1,

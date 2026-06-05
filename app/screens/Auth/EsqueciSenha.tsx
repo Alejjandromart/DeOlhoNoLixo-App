@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, forwardRef, useImperativeHandle, useEffect } from 'react';
+import React, { useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import {
   ActivityIndicator,
   View,
@@ -7,20 +7,15 @@ import {
   TouchableOpacity,
   Alert,
   TextInput,
+  Modal,
   KeyboardAvoidingView,
   Platform,
-  Keyboard,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-} from '@gorhom/bottom-sheet';
 import CustomInput from '../../components/CustomInputCadastro';
-import { auth } from '../../lib/firebase';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { useAuth } from '../../context/AuthContext';
 
 export interface EsqueciSenhaSheetRef {
   abrir: () => void;
@@ -33,42 +28,16 @@ interface EsqueciSenhaScreenProps {
 
 const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenProps>(
   ({ voltarParaLogin }, ref) => {
-    const sheetRef = useRef<BottomSheetModal>(null);
+    const { resetPassword } = useAuth();
+    const [visivel, setVisivel] = useState(false);
+
+    // Ref
     const emailInputRef = useRef<TextInput>(null);
 
     useImperativeHandle(ref, () => ({
-      abrir: () => sheetRef.current?.present(),
-      fechar: () => sheetRef.current?.dismiss(),
+      abrir: () => setVisivel(true),
+      fechar: () => setVisivel(false),
     }));
-
-    // Estado para controlar o tamanho do sheet baseado no teclado
-    const [tecladoAtivo, setTecladoAtivo] = useState(false);
-    const pontos = useMemo(() => [tecladoAtivo ? '95%' : '65%'], [tecladoAtivo]);
-
-    // Listener do teclado
-    useEffect(() => {
-      const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
-        setTecladoAtivo(true);
-      });
-      const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-        setTecladoAtivo(false);
-      });
-
-      return () => {
-        showSubscription.remove();
-        hideSubscription.remove();
-      };
-    }, []);
-
-    const renderBackdrop = (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        backgroundColor="#005b4f"
-        opacity={0.5}
-      />
-    );
 
     // Estado do formulário
     const [email, setEmail] = useState('');
@@ -96,7 +65,8 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
         setCarregando(true);
 
         // Enviar email de redefinição de senha com Firebase
-        await sendPasswordResetEmail(auth, email);
+        const { error } = await resetPassword(email);
+        if (error) throw error;
 
         // Sucesso
         setEmailEnviado(true);
@@ -107,7 +77,7 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
             {
               text: 'OK',
               onPress: () => {
-                sheetRef.current?.dismiss();
+                setVisivel(false);
                 setTimeout(() => {
                   voltarParaLogin?.();
                   // Resetar estado após fechar
@@ -133,97 +103,100 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
     };
 
     return (
-      <BottomSheetModal
-        ref={sheetRef}
-        snapPoints={pontos}
-        backdropComponent={renderBackdrop}
-        enablePanDownToClose={!carregando}
-        keyboardBehavior="extend"
-        android_keyboardInputMode="adjustResize"
-        backgroundStyle={{ backgroundColor: 'transparent' }}
-        handleIndicatorStyle={{ backgroundColor: '#FFFFFF80', width: 48 }}
+      <Modal
+        visible={visivel}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => { if (!carregando) setVisivel(false); }}
       >
-        <LinearGradient colors={['#076653', '#0E3B34']} style={styles.cartao}>
-          {/* Cabeçalho */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.botaoVoltar}
-              onPress={() => sheetRef.current?.dismiss()}
-              disabled={carregando}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.titulo}>Redefinir Senha</Text>
-            <View style={{ width: 40 }} />
-          </View>
-
-          <BottomSheetScrollView
-            contentContainerStyle={styles.conteudo}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1, justifyContent: 'flex-end' }}
           >
-            {/* Logo/Ícone */}
-            <View style={styles.iconContainer}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="lock-closed-outline" size={48} color="#A4D65E" />
+            <LinearGradient colors={['#076653', '#0E3B34']} style={styles.cartao}>
+              {/* Cabeçalho */}
+              <View style={styles.header}>
+                <TouchableOpacity
+                  style={styles.botaoVoltar}
+                  onPress={() => setVisivel(false)}
+                  disabled={carregando}
+                >
+                  <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                </TouchableOpacity>
+                <Text style={styles.titulo}>Redefinir Senha</Text>
+                <View style={{ width: 40 }} />
               </View>
-            </View>
 
-            <Text style={styles.descricao}>
-              Enviaremos um link seguro para que você crie uma nova senha imediatamente.
-            </Text>
+              <ScrollView
+                contentContainerStyle={styles.conteudo}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Logo/Ícone */}
+                <View style={styles.iconContainer}>
+                  <View style={styles.iconCircle}>
+                    <Ionicons name="lock-closed-outline" size={48} color="#A4D65E" />
+                  </View>
+                </View>
 
-            <Text style={styles.aviso}>
-              Não compartilhe este link de redefinição com ninguém.
-            </Text>
+                <Text style={styles.descricao}>
+                  Enviaremos um link seguro para que você crie uma nova senha imediatamente.
+                </Text>
 
-            <CustomInput
-              ref={emailInputRef}
-              rotulo="Usuário ou E-mail"
-              sugestao="Digite seu usuário ou email"
-              valor={email}
-              aoAlterarTexto={(t) => {
-                setEmail(t);
-                if (emailError) setEmailError('');
-              }}
-              nomeIcone="person-outline"
-              tipoTeclado="email-address"
-              erro={!!emailError}
-              tipoRetorno="done"
-              aoEnviar={handleResetPassword}
-            />
-            {emailError ? <Text style={styles.erro}>{emailError}</Text> : null}
+                <Text style={styles.aviso}>
+                  Não compartilhe este link de redefinição com ninguém.
+                </Text>
 
-            <TouchableOpacity
-              style={[styles.enviarButton, carregando && styles.enviarButtonDisabled]}
-              onPress={handleResetPassword}
-              activeOpacity={0.8}
-              disabled={carregando}
-            >
-              {carregando ? (
-                <ActivityIndicator color="#115E4C" />
-              ) : (
-                <Text style={styles.enviarButtonText}>Enviar Link</Text>
-              )}
-            </TouchableOpacity>
+                <CustomInput
+                  ref={emailInputRef}
+                  rotulo="Usuário ou E-mail"
+                  sugestao="Digite seu usuário ou email"
+                  valor={email}
+                  aoAlterarTexto={(t) => {
+                    setEmail(t);
+                    if (emailError) setEmailError('');
+                  }}
+                  nomeIcone="person-outline"
+                  tipoTeclado="email-address"
+                  erro={!!emailError}
+                  tipoRetorno="done"
+                  aoEnviar={handleResetPassword}
+                />
+                {emailError ? <Text style={styles.erro}>{emailError}</Text> : null}
 
-            <TouchableOpacity
-              style={{ alignItems: 'center', marginTop: 24, marginBottom: 32 }}
-              onPress={() => {
-                sheetRef.current?.dismiss();
-                setTimeout(() => {
-                  voltarParaLogin?.();
-                }, 300);
-              }}
-              disabled={carregando}
-            >
-              <Text style={styles.rodape}>
-                Lembrou a senha? <Text style={styles.link}>Fazer Login</Text>
-              </Text>
-            </TouchableOpacity>
-          </BottomSheetScrollView>
-        </LinearGradient>
-      </BottomSheetModal>
+                <TouchableOpacity
+                  style={[styles.enviarButton, carregando && styles.enviarButtonDisabled]}
+                  onPress={handleResetPassword}
+                  activeOpacity={0.8}
+                  disabled={carregando}
+                >
+                  {carregando ? (
+                    <ActivityIndicator color="#115E4C" />
+                  ) : (
+                    <Text style={styles.enviarButtonText}>Enviar Link</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ alignItems: 'center', marginTop: 24, marginBottom: 32 }}
+                  onPress={() => {
+                    setVisivel(false);
+                    setTimeout(() => {
+                      voltarParaLogin?.();
+                    }, 300);
+                  }}
+                  disabled={carregando}
+                >
+                  <Text style={styles.rodape}>
+                    Lembrou a senha? <Text style={styles.link}>Fazer Login</Text>
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </LinearGradient>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     );
   }
 );

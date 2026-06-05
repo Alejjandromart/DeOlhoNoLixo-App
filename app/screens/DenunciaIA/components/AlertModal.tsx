@@ -15,6 +15,9 @@ interface AlertModalProps {
   message: string;
   onConfirm: () => void;
   confirmText?: string;
+  showCancel?: boolean;
+  cancelText?: string;
+  onCancel?: () => void;
 }
 
 const AlertModal: React.FC<AlertModalProps> = ({
@@ -24,6 +27,9 @@ const AlertModal: React.FC<AlertModalProps> = ({
   message,
   onConfirm,
   confirmText = 'OK',
+  showCancel = false,
+  cancelText = 'Cancelar',
+  onCancel,
 }) => {
   const getIconConfig = () => {
     switch (type) {
@@ -45,7 +51,7 @@ const AlertModal: React.FC<AlertModalProps> = ({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onConfirm}
+      onRequestClose={showCancel ? onCancel : onConfirm}
     >
       <View style={styles.overlay}>
         <View style={styles.modal}>
@@ -56,13 +62,25 @@ const AlertModal: React.FC<AlertModalProps> = ({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
 
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: bgColor }]}
-            onPress={onConfirm}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.buttonText, { color }]}>{confirmText}</Text>
-          </TouchableOpacity>
+          <View style={styles.buttons}>
+            <TouchableOpacity
+              style={[styles.confirmButton, { backgroundColor: bgColor }]}
+              onPress={onConfirm}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.confirmButtonText, { color }]}>{confirmText}</Text>
+            </TouchableOpacity>
+
+            {showCancel && (
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={onCancel}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelButtonText}>{cancelText}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     </Modal>
@@ -112,14 +130,30 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 24,
   },
-  button: {
+  buttons: {
+    gap: 12,
+  },
+  confirmButton: {
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
   },
-  buttonText: {
+  confirmButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
   },
 });
 

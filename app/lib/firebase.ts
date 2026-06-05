@@ -1,21 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { initializeApp } from 'firebase/app';
-// @ts-ignore
+import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, initializeAuth, getReactNativePersistence, Auth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
-// Your web app's Firebase configuration
+// Configuração do Firebase com base no seu app Web
 const firebaseConfig = {
-    apiKey: "AIzaSyCxEmH_N1qy2QrSypdAqgSeRu7V-vJH-Mk",
-    authDomain: "deolho-app.firebaseapp.com",
-    projectId: "deolho-app",
-    storageBucket: "deolho-app.appspot.com",
-    messagingSenderId: undefined,
-    appId: undefined
+    apiKey: "AIzaSyAeUucu8shrYWtGqBzu5ZdizwxWkvBpkQ4",
+    authDomain: "deolhonolixo-app.firebaseapp.com",
+    projectId: "deolhonolixo-app",
+    storageBucket: "deolhonolixo-app.firebasestorage.app",
+    messagingSenderId: "397630128881",
+    appId: "1:397630128881:web:09a87d25e1619ccdaf9f50"
 };
 
-// Initialize Firebase
+// Initialize Firebase (Evitar re-inicialização em hot reload do Metro bundler)
 console.log('🔥 Initializing Firebase...');
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 console.log('✅ Firebase app initialized');
 
 // Initialize Auth
@@ -27,9 +27,13 @@ try {
     });
     console.log('✅ Firebase Auth initialized with AsyncStorage persistence');
 } catch (error) {
+    // Já inicializado (hot reload)
     console.error('❌ Error initializing auth with persistence, falling back to getAuth:', error);
     auth = getAuth(app);
     console.log('✅ Firebase Auth initialized with getAuth');
 }
+
+// Initialize Firestore
+export const db = getFirestore(app);
 
 export { auth };

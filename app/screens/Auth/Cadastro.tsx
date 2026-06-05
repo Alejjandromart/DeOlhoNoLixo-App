@@ -8,25 +8,25 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-} from '@gorhom/bottom-sheet';
-import BotaoGoogle from '../../components/SocialButton';
 import CustomInput from '../../components/CustomInputCadastro';
-import CustomCheckbox from '../../components/CustomCheckbox'; // Importar o novo componente
+import CustomCheckbox from '../../components/CustomCheckbox';
 import type {
   DadosCadastro,
   ErrosValidacao,
   ResultadoValidacao,
-  RespostaCadastro,
 } from '../../_types/type';
 import { useAuth } from '../../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../../lib/firebase';
 
 export interface CadastroSheetRef {
   abrir: () => void;
@@ -39,8 +39,8 @@ interface CadastroScreenProps {
 
 const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abrirLogin }, ref) => {
   const navigation = useNavigation<any>();
-  const { signUp, signInWithGoogle } = useAuth();
-  const sheetRef = useRef<BottomSheetModal>(null);
+  const { signUp } = useAuth();
+  const [visivel, setVisivel] = useState(false);
 
   // Refs para os campos de input
   const nomeCompletoInputRef = useRef<TextInput>(null);
@@ -50,19 +50,9 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
   const confirmarSenhaInputRef = useRef<TextInput>(null);
 
   useImperativeHandle(ref, () => ({
-    abrir: () => sheetRef.current?.present(),
-    fechar: () => sheetRef.current?.dismiss(),
+    abrir: () => setVisivel(true),
+    fechar: () => setVisivel(false),
   }));
-
-  const pontos = useMemo(() => ['95%'], []);
-  const renderBackdrop = (props: any) => (
-    <BottomSheetBackdrop
-      {...props}
-      appearsOnIndex={0}
-      disappearsOnIndex={-1}
-      opacity={0.5}
-    />
-  );
 
   // Estado do formulário
   const [dados, setDados] = useState<DadosCadastro>({
@@ -134,8 +124,21 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
       }
 
       // Cadastro bem-sucedido
+      // Criar perfil no Firestore com os dados do formulário
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        await setDoc(doc(db, 'users', currentUser.uid), {
+          displayName: dados.nomeCompleto.trim(),
+          email: dados.email,
+          cidade: '',
+          updatedAt: serverTimestamp(),
+        });
+        // Também atualiza Firebase Auth displayName
+        await updateProfile(currentUser, { displayName: dados.nomeCompleto.trim() });
+      }
+
       console.log('✅ Cadastro bem-sucedido! Flag @isFirstLogin já definida.');
-      sheetRef.current?.dismiss();
+      setVisivel(false);
       // O AuthNavigator vai detectar e redirecionar para Tutorial
     } catch (err) {
       // Se der erro inesperado, remove a flag
@@ -149,192 +152,159 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
 
   const onCadastrar = handleSignUp;
 
-  const onGoogle = async () => {
-    if (carregando) return;
-    setCarregando(true);
-
-    try {
-      const { error } = await signInWithGoogle();
-
-      if (error) {
-        if (error.code === '7') { // DEVELOPER_ERROR
-          Alert.alert('Erro de Configuração', 'Verifique o webClientId no AuthContext.');
-        } else if (error.code === '-5') { // SIGN_IN_CANCELLED
-          console.log('Cadastro cancelado pelo usuário');
-        } else {
-          Alert.alert('Erro', 'Falha ao cadastrar com Google. Tente novamente.');
-          console.error(error);
-        }
-      } else {
-        // Signup successful - AuthNavigator handles navigation
-        console.log('✅ Cadastro com Google bem-sucedido!');
-        sheetRef.current?.dismiss();
-      }
-    } catch (err) {
-      console.error('Erro inesperado no Google Cadastro:', err);
-      Alert.alert('Erro', 'Ocorreu um erro inesperado.');
-    } finally {
-      setCarregando(false);
-    }
-  };
-
   return (
-    <BottomSheetModal
-      ref={sheetRef}
-      snapPoints={pontos}
-      backdropComponent={renderBackdrop}
-      enablePanDownToClose={false}
-      keyboardBehavior="extend"
-      android_keyboardInputMode="adjustResize"
-      backgroundStyle={{ backgroundColor: 'transparent' }}
-      handleIndicatorStyle={{ backgroundColor: '#FFFFFF80', width: 48 }}
+    <Modal
+      visible={visivel}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setVisivel(false)}
     >
-      {/* Conteúdo do sheet com gradiente e cantos arredondados para parecer o card da imagem */}
-      <LinearGradient
-        colors={['#076653', '#0E3B34']}
-        style={styles.cartao}
-      >
-        {/* Cabeçalho */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.botaoVoltar} onPress={() => sheetRef.current?.dismiss()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.titulo}>Cadastro</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <BottomSheetScrollView
-          contentContainerStyle={styles.conteudo}
-          showsVerticalScrollIndicator={false}
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, justifyContent: 'flex-end' }}
         >
-          <Text style={styles.boasVindas}>Bom ter você aqui</Text>
-
-          <CustomInput
-            ref={nomeCompletoInputRef}
-            rotulo="Nome Completo"
-            sugestao="Digite seu nome completo"
-            valor={dados.nomeCompleto}
-            aoAlterarTexto={(t) => atualizar('nomeCompleto', t)}
-            nomeIcone="person-outline"
-            capitalizacaoAutomatica="words"
-            erro={!!erros.nomeCompleto}
-            tipoRetorno="next"
-            aoEnviar={() => emailInputRef.current?.focus()}
-          />
-          {erros.nomeCompleto ? <Text style={styles.erro}>{erros.nomeCompleto}</Text> : null}
-
-          <CustomInput
-            ref={emailInputRef}
-            rotulo="Email*"
-            sugestao="Digite seu email"
-            valor={dados.email}
-            aoAlterarTexto={(t) => atualizar('email', t)}
-            nomeIcone="mail-outline"
-            tipoTeclado="email-address"
-            erro={!!erros.email}
-            tipoRetorno="next"
-            aoEnviar={() => nomeUsuarioInputRef.current?.focus()}
-          />
-          {erros.email ? <Text style={styles.erro}>{erros.email}</Text> : null}
-
-          <CustomInput
-            ref={nomeUsuarioInputRef}
-            rotulo="Nome de Usuário"
-            sugestao="Digite seu nome de usuário"
-            valor={dados.nomeUsuario}
-            aoAlterarTexto={(t) => atualizar('nomeUsuario', t)}
-            nomeIcone="person-outline"
-            erro={!!erros.nomeUsuario}
-            tipoRetorno="next"
-            aoEnviar={() => senhaInputRef.current?.focus()}
-          />
-          {erros.nomeUsuario ? <Text style={styles.erro}>{erros.nomeUsuario}</Text> : null}
-
-          <CustomInput
-            ref={senhaInputRef}
-            rotulo="Senha*"
-            sugestao="Digite sua senha"
-            valor={dados.senha}
-            aoAlterarTexto={(t) => atualizar('senha', t)}
-            nomeIcone="lock-closed-outline"
-            entradaSegura
-            mostrarToggleSenha
-            senhaVisivel={mostrarSenha}
-            aoAlternarSenha={() => setMostrarSenha((v) => !v)}
-            erro={!!erros.senha}
-            tipoRetorno="next"
-            aoEnviar={() => confirmarSenhaInputRef.current?.focus()}
-          />
-          {erros.senha ? <Text style={styles.erro}>{erros.senha}</Text> : null}
-
-          <CustomInput
-            ref={confirmarSenhaInputRef}
-            rotulo="Confirmar Senha*"
-            sugestao="Digite novamente a senha"
-            valor={dados.confirmarSenha}
-            aoAlterarTexto={(t) => atualizar('confirmarSenha', t)}
-            nomeIcone="lock-closed-outline"
-            entradaSegura
-            mostrarToggleSenha
-            senhaVisivel={mostrarConfirmarSenha}
-            aoAlternarSenha={() => setMostrarConfirmarSenha((v) => !v)}
-            erro={!!erros.confirmarSenha}
-            tipoRetorno="done"
-            aoEnviar={onCadastrar}
-          />
-          {erros.confirmarSenha ? <Text style={styles.erro}>{erros.confirmarSenha}</Text> : null}
-
-          <CustomCheckbox
-            value={dados.termosAceitos}
-            onValueChange={(v) => atualizar('termosAceitos', v)}
-            labelComponent={
-              <Text style={styles.termosTexto}>
-                Eu concordo com os <Text style={styles.link}>Terms & Conditions</Text>
-              </Text>
-            }
-          />
-          {erros.termos ? <Text style={styles.erro}>{erros.termos}</Text> : null}
-
-          <TouchableOpacity
-            style={[
-              styles.cadastrarButton,
-              carregando && styles.cadastrarButtonDisabled
-            ]}
-            onPress={onCadastrar}
-            activeOpacity={0.8}
-            disabled={carregando}
+          {/* Conteúdo do sheet com gradiente e cantos arredondados para parecer o card da imagem */}
+          <LinearGradient
+            colors={['#076653', '#0E3B34']}
+            style={styles.cartao}
           >
-            {carregando ? (
-              <ActivityIndicator color="#115E4C" />
-            ) : (
-              <Text style={styles.cadastrarButtonText}>Cadastrar</Text>
-            )}
-          </TouchableOpacity>
+            {/* Cabeçalho */}
+            <View style={styles.header}>
+              <TouchableOpacity style={styles.botaoVoltar} onPress={() => setVisivel(false)}>
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.titulo}>Cadastro</Text>
+              <View style={{ width: 40 }} />
+            </View>
 
-          <View style={styles.divisor}>
-            <View style={styles.linha} />
-            <Text style={styles.divisorTexto}>Ou</Text>
-            <View style={styles.linha} />
-          </View>
+            <ScrollView
+              contentContainerStyle={styles.conteudo}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.boasVindas}>Bom ter você aqui</Text>
 
-          <BotaoGoogle texto="Continuar com Google" aoPressionar={onGoogle} />
+              <CustomInput
+                ref={nomeCompletoInputRef}
+                rotulo="Nome Completo"
+                sugestao="Digite seu nome completo"
+                valor={dados.nomeCompleto}
+                aoAlterarTexto={(t) => atualizar('nomeCompleto', t)}
+                nomeIcone="person-outline"
+                capitalizacaoAutomatica="words"
+                erro={!!erros.nomeCompleto}
+                tipoRetorno="next"
+                aoEnviar={() => emailInputRef.current?.focus()}
+              />
+              {erros.nomeCompleto ? <Text style={styles.erro}>{erros.nomeCompleto}</Text> : null}
 
-          <TouchableOpacity
-            style={{ alignItems: 'center', marginTop: 8 }}
-            onPress={() => {
-              sheetRef.current?.dismiss();
-              setTimeout(() => {
-                abrirLogin?.();
-              }, 300);
-            }}
-          >
-            <Text style={styles.rodape}>
-              Já tem uma conta? <Text style={styles.link}>Fazer Login</Text>
-            </Text>
-          </TouchableOpacity>
-        </BottomSheetScrollView>
-      </LinearGradient>
-    </BottomSheetModal>
+              <CustomInput
+                ref={emailInputRef}
+                rotulo="Email*"
+                sugestao="Digite seu email"
+                valor={dados.email}
+                aoAlterarTexto={(t) => atualizar('email', t)}
+                nomeIcone="mail-outline"
+                tipoTeclado="email-address"
+                erro={!!erros.email}
+                tipoRetorno="next"
+                aoEnviar={() => nomeUsuarioInputRef.current?.focus()}
+              />
+              {erros.email ? <Text style={styles.erro}>{erros.email}</Text> : null}
+
+              <CustomInput
+                ref={nomeUsuarioInputRef}
+                rotulo="Nome de Usuário"
+                sugestao="Digite seu nome de usuário"
+                valor={dados.nomeUsuario}
+                aoAlterarTexto={(t) => atualizar('nomeUsuario', t)}
+                nomeIcone="person-outline"
+                erro={!!erros.nomeUsuario}
+                tipoRetorno="next"
+                aoEnviar={() => senhaInputRef.current?.focus()}
+              />
+              {erros.nomeUsuario ? <Text style={styles.erro}>{erros.nomeUsuario}</Text> : null}
+
+              <CustomInput
+                ref={senhaInputRef}
+                rotulo="Senha*"
+                sugestao="Digite sua senha"
+                valor={dados.senha}
+                aoAlterarTexto={(t) => atualizar('senha', t)}
+                nomeIcone="lock-closed-outline"
+                entradaSegura
+                mostrarToggleSenha
+                senhaVisivel={mostrarSenha}
+                aoAlternarSenha={() => setMostrarSenha((v) => !v)}
+                erro={!!erros.senha}
+                tipoRetorno="next"
+                aoEnviar={() => confirmarSenhaInputRef.current?.focus()}
+              />
+              {erros.senha ? <Text style={styles.erro}>{erros.senha}</Text> : null}
+
+              <CustomInput
+                ref={confirmarSenhaInputRef}
+                rotulo="Confirmar Senha*"
+                sugestao="Digite novamente a senha"
+                valor={dados.confirmarSenha}
+                aoAlterarTexto={(t) => atualizar('confirmarSenha', t)}
+                nomeIcone="lock-closed-outline"
+                entradaSegura
+                mostrarToggleSenha
+                senhaVisivel={mostrarConfirmarSenha}
+                aoAlternarSenha={() => setMostrarConfirmarSenha((v) => !v)}
+                erro={!!erros.confirmarSenha}
+                tipoRetorno="done"
+                aoEnviar={onCadastrar}
+              />
+              {erros.confirmarSenha ? <Text style={styles.erro}>{erros.confirmarSenha}</Text> : null}
+
+              <CustomCheckbox
+                value={dados.termosAceitos}
+                onValueChange={(v) => atualizar('termosAceitos', v)}
+                labelComponent={
+                  <Text style={styles.termosTexto}>
+                    Eu concordo com os <Text style={styles.link}>Terms & Conditions</Text>
+                  </Text>
+                }
+              />
+              {erros.termos ? <Text style={styles.erro}>{erros.termos}</Text> : null}
+
+              <TouchableOpacity
+                style={[
+                  styles.cadastrarButton,
+                  carregando && styles.cadastrarButtonDisabled
+                ]}
+                onPress={onCadastrar}
+                activeOpacity={0.8}
+                disabled={carregando}
+              >
+                {carregando ? (
+                  <ActivityIndicator color="#115E4C" />
+                ) : (
+                  <Text style={styles.cadastrarButtonText}>Cadastrar</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ alignItems: 'center', marginTop: 8 }}
+                onPress={() => {
+                  setVisivel(false);
+                  setTimeout(() => {
+                    abrirLogin?.();
+                  }, 300);
+                }}
+              >
+                <Text style={styles.rodape}>
+                  Já tem uma conta? <Text style={styles.link}>Fazer Login</Text>
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </LinearGradient>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
   );
 });
 
@@ -409,22 +379,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.5
-  },
-  divisor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16
-  },
-  linha: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#FFFFFF60'
-  },
-  divisorTexto: {
-    color: '#FFFFFF',
-    marginHorizontal: 12,
-    fontWeight: '700',
-    fontSize: 14,
   },
   rodape: {
     color: '#FFFFFF',
