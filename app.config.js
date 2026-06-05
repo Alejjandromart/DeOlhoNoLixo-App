@@ -54,12 +54,12 @@ module.exports = {
     slug: "DeOlho",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "app/assets/images/DeOlhoIcon.png",
+    icon: "./app/assets/images/DeOlhoIcon.png",
     scheme: "deolhoapp",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     splash: {
-      image: "app/assets/images/splash.png",
+      image: "./app/assets/images/splash.png",
       resizeMode: "contain",
       backgroundColor: "#ffffff"
     },
@@ -69,7 +69,7 @@ module.exports = {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "app/assets/images/DeOlhoIcon.png",
+        foregroundImage: "./app/assets/images/DeOlhoIcon.png",
         backgroundColor: "#ffffff"
       },
       package: "com.deolhonolixo.app",
@@ -78,7 +78,7 @@ module.exports = {
     web: {
       bundler: "metro",
       output: "static",
-      favicon: "app/assets/images/DeOlhoIcon.png"
+      favicon: "./app/assets/images/DeOlhoIcon.png"
     },
     plugins: [
       "expo-router",
