@@ -72,9 +72,7 @@ module.exports = {
         foregroundImage: "app/assets/images/DeOlhoIcon.png",
         backgroundColor: "#ffffff"
       },
-      edgeToEdgeEnabled: true,
-      predictiveBackGestureEnabled: false,
-      package: "DeOlho.NoLixo.app",
+      package: "com.deolhonolixo.app",
       googleServicesFile: "./google-services.json"
     },
     web: {
