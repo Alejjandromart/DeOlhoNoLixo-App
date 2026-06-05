@@ -15,7 +15,8 @@
       },
       "env": {
         "BACKEND_URL": "https://deolho-ia.onrender.com",
-        "BACKEND_API_KEY": "287e60096af7564e10abab86e726dcca6217b2c52de91a423ef923947d2374df"
+        "BACKEND_API_KEY": "287e60096af7564e10abab86e726dcca6217b2c52de91a423ef923947d2374df",
+        "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK": "1"
       }
     },
     "production": {
@@ -25,7 +26,8 @@
       },
       "env": {
         "BACKEND_URL": "https://deolho-ia.onrender.com",
-        "BACKEND_API_KEY": "287e60096af7564e10abab86e726dcca6217b2c52de91a423ef923947d2374df"
+        "BACKEND_API_KEY": "287e60096af7564e10abab86e726dcca6217b2c52de91a423ef923947d2374df",
+        "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK": "1"
       }
     }
   },
