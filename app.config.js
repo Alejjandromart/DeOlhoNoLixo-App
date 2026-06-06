@@ -108,9 +108,6 @@ module.exports = {
         }
       ]
     ],
-    experiments: {
-      typedRoutes: true
-    },
     extra: {
       backendUrl: process.env.BACKEND_URL || `http://${localIp}:8000`,
       backendApiKey: process.env.BACKEND_API_KEY || '287e60096af7564e10abab86e726dcca6217b2c52de91a423ef923947d2374df',
