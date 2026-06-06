@@ -57,7 +57,7 @@ module.exports = {
     icon: "./app/assets/images/DeOlhoIcon.png",
     scheme: "deolhoapp",
     userInterfaceStyle: "automatic",
-    newArchEnabled: true,
+    newArchEnabled: false,
     splash: {
       image: "./app/assets/images/splash.png",
       resizeMode: "contain",
@@ -77,7 +77,7 @@ module.exports = {
     },
     web: {
       bundler: "metro",
-      output: "static",
+      output: "single",
       favicon: "./app/assets/images/DeOlhoIcon.png"
     },
     plugins: [
@@ -87,7 +87,26 @@ module.exports = {
       "expo-secure-store",
       "expo-status-bar",
       "expo-video",
-      "expo-asset"
+      "expo-asset",
+      "expo-splash-screen",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O DeOlho precisa da câmera para fotografar denúncias."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "O DeOlho usa sua localização para registrar o local da denúncia."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O DeOlho acessa sua galeria para anexar fotos às denúncias."
+        }
+      ]
     ],
     experiments: {
       typedRoutes: true
