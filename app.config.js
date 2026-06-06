@@ -72,8 +72,7 @@ module.exports = {
         foregroundImage: "./app/assets/images/DeOlhoIcon.png",
         backgroundColor: "#ffffff"
       },
-      package: "deolho.nolixo",
-      googleServicesFile: "./google-services.json"
+      package: "deolho.nolixo"
     },
     web: {
       bundler: "metro",
