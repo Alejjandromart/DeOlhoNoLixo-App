@@ -81,13 +81,13 @@ module.exports = {
       favicon: "./app/assets/images/DeOlhoIcon.png"
     },
     plugins: [
-      "expo-router",
       "expo-web-browser",
       "expo-font",
       "expo-audio",
       "expo-secure-store",
       "expo-status-bar",
-      "expo-video"
+      "expo-video",
+      "expo-asset"
     ],
     experiments: {
       typedRoutes: true
