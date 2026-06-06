@@ -1,0 +1,19 @@
+# Dependências locais
+node_modules/
+
+# Pastas de desenvolvimento/backend/IA (não pertencem ao app móvel)
+backend/
+backendIA/
+ai-deolho2/
+_vscode/
+tasks/
+
+# Arquivos temporários e lixo no root
+download.png
+com.facebook.react.devsupport.BundleDownloader
+walkthrough.md
+
+# Cache e builds do Expo
+.expo/
+dist/
+web-build/

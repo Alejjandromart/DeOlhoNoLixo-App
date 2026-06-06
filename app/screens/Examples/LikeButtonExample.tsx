@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import LikeExplosion from '../components/LikeExplosion';
+import LikeExplosion from '../../components/LikeExplosion';
 
 const LikeButtonExample = () => {
     const [liked, setLiked] = useState(false);
