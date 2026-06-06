@@ -17,7 +17,7 @@
 | D05 | Sobrecarga de Upload EAS (Datasets de IA no Repositório) | Alta | Lentidão extrema e erros de nome de arquivo longo no Windows | Resolvido |
 | D06 | Perfil do Usuário Não-Funcional (Mockado) | Alta | Falha de persistência de dados de usabilidade do perfil | Resolvido |
 | D07 | Tela de Sucesso Falsa na Denúncia IA (Mockada) | Alta | Denúncias realizadas via IA não eram gravadas no banco | Resolvido |
-| D08 | Falha de Bloqueio por Filtros de Segurança do Gemini | Alta | Fotos de resíduos eram bloqueadas pela IA por falso positivo | Resolvido |
+| D08 | Falha de Bloqueio por Filtros de Segurança do Gemini | Alta | Fotos de resíduos eras bloqueadas pela IA por falso positivo | Resolvido |
 | D09 | Fragilidade no Parsing de Resposta JSON da IA (Gemini) | Alta | Crash do parser ao receber markdown ou array na resposta da IA | Resolvido |
 | D10 | Duplicidade no Envio de Denúncias (Double Submit) | Média | Duplicação de registros se o usuário clicasse várias vezes no botão | Resolvido |
 | D11 | Mismatch do Nome de Pacote Android (Firebase Crash) | Crítica | Falha de autenticação e crash no carregamento do Google Services | Resolvido |
@@ -101,6 +101,40 @@
   `FirebaseError: Firebase App named '[DEFAULT]' already exists`.
 - **Causa Raiz**: O arquivo `app/lib/firebase.ts` inicializava o aplicativo chamando `initializeApp(firebaseConfig)` diretamente. No recarregamento rápido do Metro (Hot Reload), o código JavaScript é re-executado, disparando o método repetidamente sobre um aplicativo já registrado.
 - **Ação Corretiva**: Modificação do fluxo de inicialização no `firebase.ts` utilizando a condicional `getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]`, reutilizando a instância já estabelecida.
+
+---
+
+## Mapeamento de Tarefas (Tasks) e Defeitos Solucionados
+
+O projeto foi organizado em 5 arquivos de tarefas técnicas (`/tasks`), cada uma visando resolver grupos específicos de defeitos e implementar funcionalidades de garantia de qualidade:
+
+### [Task 1: Firebase Refactor](file:///c:/Users/Alejj/Documents/UFAM/5º%20periodo/Qualidade%20de%20Software/App-%20DeOlho/DeOlhoNoLixo-App/tasks/task1_firebase_refactor.md) (Infraestrutura)
+- **Defeito Resolvido**: Ausência de infraestrutura estável para armazenamento global persistente das denúncias e fotos.
+- **Defeito Resolvido (D13)**: Crash de "App [DEFAULT] already exists" no Metro corrigido no `firebase.ts`.
+- **Melhoria de Estabilidade**: Remoção completa do pacote descontinuado e mal-configurado `@react-native-google-signin/google-signin` que quebrava builds nativas no Android devido à falta de credenciais do Google Play.
+- **Correção de Configuração**: Adição dos identificadores corretos (`messagingSenderId` e `appId`) no arquivo [firebase.ts](file:///c:/Users/Alejj/Documents/UFAM/5º%20periodo/Qualidade%20de%20Software/App-%20DeOlho/DeOlhoNoLixo-App/app/lib/firebase.ts) para permitir comunicação do SDK móvel no Android.
+
+### [Task 2: Feed Global - Firestore](file:///c:/Users/Alejj/Documents/UFAM/5º%20periodo/Qualidade%20de%20Software/App-%20DeOlho/DeOlhoNoLixo-App/tasks/task2_firestore_feed.md) (Banco de Dados em Tempo Real)
+- **Defeito Resolvido (Volatilidade)**: Denúncias que eram mockadas em memória local sumiam quando o aplicativo era fechado/reiniciado.
+- **Defeito Resolvido (Likes Infinitos)**: Correção do contador de curtidas, limitando a 1 curtida por usuário através da introdução do array de verificação de UIDs `likedBy`.
+- **Melhoria de Sincronia**: Uso de incremento atômico (`increment(1)`) para o contador de comentários (`comentariosCount`), evitando divergência local (desync).
+- **Solução de URI Local**: O app agora resolve o upload de fotos tiradas localmente para nuvem, gerando links públicos persistentes que todos os usuários podem visualizar.
+
+### [Task 3: Corrigir Telas Críticas](file:///c:/Users/Alejj/Documents/UFAM/5º%20periodo/Qualidade%20de%20Software/App-%20DeOlho/DeOlhoNoLixo-App/tasks/task3_screen_fixes.md) (Refatoração de Interface e Limpeza)
+- **Defeito Resolvido (D06)**: Correção de tela de perfil fictícia, salvando e lendo dados de verdade do Firestore e Firebase Auth.
+- **Defeito Resolvido (D07)**: Fluxo de denúncia IA acoplado ao banco de dados real.
+- **Limpeza de Código Morto**: Exclusão de arquivos obsoletos de rotas que causavam warnings de lint (`RootStack.tsx`).
+- **Otimização de Desempenho**: Remoção de mais de 15 comandos `console.log` dispersos nos contextos de autenticação e navegação para evitar degradação de desempenho em builds de release.
+
+### [Task 4: BackendIA](file:///c:/Users/Alejj/Documents/UFAM/5º%20periodo/Qualidade%20de%20Software/App-%20DeOlho/DeOlhoNoLixo-App/tasks/task4_backendIA_deploy.md) (Integração de Inteligência Artificial)
+- **Defeito Resolvido (Mock de IA)**: A tela de análise inteligente usava respostas fictícias pré-definidas. Conectamos a UI com a chamada à API real.
+- **Defeito Resolvido (D08 e D09)**: Correções de filtros de segurança (bloqueio do Gemini) e tratamentos avançados de erros de parsing JSON.
+- **Melhoria de Disponibilidade (Cold Start)**: Criação de rota `/health` integrada a um cron job externo para evitar que o servidor no Render (Free Tier) entre em estado de suspensão durante a utilização dos usuários.
+
+### [Task 5: EAS Build + Distribuição](file:///c:/Users/Alejj/Documents/UFAM/5º%20periodo/Qualidade%20de%20Software/App-%20DeOlho/DeOlhoNoLixo-App/tasks/task5_eas_build_distribuicao.md) (Compilação e Lançamento)
+- **Defeito Resolvido (Falta de Distribuição)**: Criação dos perfis `preview` e `production` no `eas.json` para geração de APK de teste independente de simuladores.
+- **Defeito Resolvido (D11 e D12)**: Ajustes críticos de compatibilidade de nomes de pacotes Android minúsculos e prefixos de caminhos de imagens.
+- **Melhoria de Segurança**: Introdução dos EAS Secrets para injetar chaves privadas de APIs (`BACKEND_API_KEY`) no APK sem salvá-las de forma aberta no Git público.
 
 ---
 
