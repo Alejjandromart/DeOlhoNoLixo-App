@@ -12,7 +12,6 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.6",
-    "@lottiefiles/dotlottie-react": "^0.17.7",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.8.6",
     "@react-navigation/elements": "^2.8.3",
@@ -68,7 +67,10 @@
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
-        "exclude": ["expo-av", "expo-modules-jsi"]
+        "exclude": [
+          "expo-av",
+          "expo-modules-jsi"
+        ]
       }
     }
   },
