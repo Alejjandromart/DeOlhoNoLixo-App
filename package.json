@@ -2,7 +2,7 @@
   "name": "deolhonolixo-app",
   "main": "index.js",
   "license": "0BSD",
-  "version": "1.0.0",
+  "version": "2.3.3",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
