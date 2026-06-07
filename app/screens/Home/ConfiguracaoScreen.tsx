@@ -8,17 +8,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../navigation/RootStack';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmationModal from '../../components/ConfirmationModal';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ConfiguracaoScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Configuracao'>;
 
 const ConfiguracaoScreen = () => {
   const navigation = useNavigation<ConfiguracaoScreenNavigationProp>();
   const isFocused = useIsFocused();
-  const { signOut, user } = useAuth();
+  const { signOut, user, deleteAccount } = useAuth();
   const [cidade, setCidade] = useState('');
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [gpsEnabled, setGpsEnabled] = useState(true);
@@ -98,9 +99,27 @@ const ConfiguracaoScreen = () => {
     await signOut();
   };
 
-  const handleDeleteAccount = () => {
-    // TODO: Implement delete account logic
-    console.log("Delete account confirmed");
+  const handleDeleteAccount = async () => {
+    try {
+      if (user) {
+        await deleteDoc(doc(db, 'users', user.uid));
+      }
+      await AsyncStorage.multiRemove(['@isFirstLogin', '@onboardingComplete']);
+      const { error } = await deleteAccount();
+      if (error) {
+        if (error.code === 'auth/requires-recent-login') {
+          Alert.alert(
+            'Sessão expirada',
+            'Por segurança, faça login novamente antes de excluir sua conta.',
+          );
+        } else {
+          Alert.alert('Erro', 'Não foi possível excluir a conta. Tente novamente.');
+        }
+      }
+    } catch (e) {
+      Alert.alert('Erro', 'Falha ao excluir conta. Tente novamente.');
+      console.error(e);
+    }
   };
 
   return (
@@ -215,7 +234,7 @@ const ConfiguracaoScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.versionText}>Versão 1.0.0</Text>
+        <Text style={styles.versionText}>Versão 2.3.3</Text>
       </ScrollView>
 
       <ConfirmationModal

@@ -11,8 +11,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import CustomInput from '../../components/CustomInputCadastro';
 import { useAuth } from '../../context/AuthContext';
@@ -29,9 +31,9 @@ interface EsqueciSenhaScreenProps {
 const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenProps>(
   ({ voltarParaLogin }, ref) => {
     const { resetPassword } = useAuth();
+    const insets = useSafeAreaInsets();
     const [visivel, setVisivel] = useState(false);
 
-    // Ref
     const emailInputRef = useRef<TextInput>(null);
 
     useImperativeHandle(ref, () => ({
@@ -39,57 +41,36 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
       fechar: () => setVisivel(false),
     }));
 
-    // Estado do formulário
     const [email, setEmail] = useState('');
     const [carregando, setCarregando] = useState(false);
     const [emailError, setEmailError] = useState('');
-    const [emailEnviado, setEmailEnviado] = useState(false);
 
     const handleResetPassword = async () => {
       setEmailError('');
 
-      // Validação básica
-      if (!email.trim()) {
-        setEmailError('Campo obrigatório');
-        return;
-      }
-
-      // Validar formato de email
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        setEmailError('E-mail inválido');
-        return;
-      }
+      if (!email.trim()) { setEmailError('Campo obrigatório'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setEmailError('E-mail inválido'); return; }
 
       try {
         setCarregando(true);
-
-        // Enviar email de redefinição de senha com Firebase
         const { error } = await resetPassword(email);
         if (error) throw error;
 
-        // Sucesso
-        setEmailEnviado(true);
         Alert.alert(
           'E-mail Enviado!',
-          'Enviamos um link de redefinição de senha para seu e-mail. Verifique sua caixa de entrada.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                setVisivel(false);
-                setTimeout(() => {
-                  voltarParaLogin?.();
-                  // Resetar estado após fechar
-                  setEmail('');
-                  setEmailEnviado(false);
-                }, 200);
-              },
+          'Enviamos um link de redefinição de senha. Verifique sua caixa de entrada.',
+          [{
+            text: 'OK',
+            onPress: () => {
+              setVisivel(false);
+              setTimeout(() => {
+                voltarParaLogin?.();
+                setEmail('');
+              }, 200);
             },
-          ]
+          }]
         );
       } catch (err: any) {
-        console.error('Erro ao resetar senha:', err);
         if (err.code === 'auth/user-not-found') {
           setEmailError('E-mail não encontrado');
         } else if (err.code === 'auth/invalid-email') {
@@ -106,96 +87,87 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
       <Modal
         visible={visivel}
         animationType="slide"
-        transparent={true}
+        transparent={false}
+        statusBarTranslucent
         onRequestClose={() => { if (!carregando) setVisivel(false); }}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1, justifyContent: 'flex-end' }}
+        <LinearGradient colors={['#076653', '#0a2e28']} style={styles.root}>
+          <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+          {/* Header */}
+          <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+            <TouchableOpacity
+              style={styles.botaoVoltar}
+              onPress={() => setVisivel(false)}
+              disabled={carregando}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.titulo}>Redefinir Senha</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
           >
-            <LinearGradient colors={['#076653', '#0E3B34']} style={styles.cartao}>
-              {/* Cabeçalho */}
-              <View style={styles.header}>
-                <TouchableOpacity
-                  style={styles.botaoVoltar}
-                  onPress={() => setVisivel(false)}
-                  disabled={carregando}
-                >
-                  <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-                </TouchableOpacity>
-                <Text style={styles.titulo}>Redefinir Senha</Text>
-                <View style={{ width: 40 }} />
+            <ScrollView
+              contentContainerStyle={[styles.conteudo, { paddingBottom: insets.bottom + 32 }]}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.iconSection}>
+                <View style={styles.iconCircle}>
+                  <Ionicons name="lock-open-outline" size={48} color="#A4D65E" />
+                </View>
+                <Text style={styles.titulo2}>Esqueceu sua senha?</Text>
+                <Text style={styles.descricao}>
+                  Digite o e-mail da sua conta e enviaremos um link para você criar uma nova senha.
+                </Text>
               </View>
 
-              <ScrollView
-                contentContainerStyle={styles.conteudo}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
-                {/* Logo/Ícone */}
-                <View style={styles.iconContainer}>
-                  <View style={styles.iconCircle}>
-                    <Ionicons name="lock-closed-outline" size={48} color="#A4D65E" />
-                  </View>
-                </View>
+              <CustomInput
+                ref={emailInputRef}
+                rotulo="E-mail"
+                sugestao="Digite seu e-mail"
+                valor={email}
+                aoAlterarTexto={(t) => { setEmail(t); if (emailError) setEmailError(''); }}
+                nomeIcone="mail-outline"
+                tipoTeclado="email-address"
+                erro={!!emailError}
+                tipoRetorno="done"
+                aoEnviar={handleResetPassword}
+              />
+              {emailError ? <Text style={styles.erro}>{emailError}</Text> : null}
 
-                <Text style={styles.descricao}>
-                  Enviaremos um link seguro para que você crie uma nova senha imediatamente.
-                </Text>
-
-                <Text style={styles.aviso}>
-                  Não compartilhe este link de redefinição com ninguém.
-                </Text>
-
-                <CustomInput
-                  ref={emailInputRef}
-                  rotulo="Usuário ou E-mail"
-                  sugestao="Digite seu usuário ou email"
-                  valor={email}
-                  aoAlterarTexto={(t) => {
-                    setEmail(t);
-                    if (emailError) setEmailError('');
-                  }}
-                  nomeIcone="person-outline"
-                  tipoTeclado="email-address"
-                  erro={!!emailError}
-                  tipoRetorno="done"
-                  aoEnviar={handleResetPassword}
-                />
-                {emailError ? <Text style={styles.erro}>{emailError}</Text> : null}
-
+              <View style={styles.actionsSection}>
                 <TouchableOpacity
-                  style={[styles.enviarButton, carregando && styles.enviarButtonDisabled]}
+                  style={[styles.enviarButton, carregando && styles.buttonDisabled]}
                   onPress={handleResetPassword}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                   disabled={carregando}
                 >
                   {carregando ? (
-                    <ActivityIndicator color="#115E4C" />
+                    <ActivityIndicator color="#0a2e28" />
                   ) : (
                     <Text style={styles.enviarButtonText}>Enviar Link</Text>
                   )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={{ alignItems: 'center', marginTop: 24, marginBottom: 32 }}
+                  style={styles.voltarButton}
                   onPress={() => {
                     setVisivel(false);
-                    setTimeout(() => {
-                      voltarParaLogin?.();
-                    }, 300);
+                    setTimeout(() => voltarParaLogin?.(), 300);
                   }}
                   disabled={carregando}
                 >
-                  <Text style={styles.rodape}>
-                    Lembrou a senha? <Text style={styles.link}>Fazer Login</Text>
-                  </Text>
+                  <Text style={styles.voltarButtonText}>Voltar para o Login</Text>
                 </TouchableOpacity>
-              </ScrollView>
-            </LinearGradient>
+              </View>
+            </ScrollView>
           </KeyboardAvoidingView>
-        </View>
+        </LinearGradient>
       </Modal>
     );
   }
@@ -204,22 +176,17 @@ const EsqueciSenhaScreen = forwardRef<EsqueciSenhaSheetRef, EsqueciSenhaScreenPr
 export default EsqueciSenhaScreen;
 
 const styles = StyleSheet.create({
-  cartao: {
+  root: {
     flex: 1,
-    marginHorizontal: 12,
-    marginBottom: 8,
-    borderRadius: 24,
-    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingHorizontal: 16,
     paddingBottom: 8,
     justifyContent: 'space-between',
   },
-  botaoVoltar: { padding: 6 },
+  botaoVoltar: { padding: 8 },
   titulo: {
     color: '#FFFFFF',
     fontSize: 20,
@@ -228,79 +195,82 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   conteudo: {
-    paddingHorizontal: 18,
-    paddingBottom: 60,
     flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
   },
-  iconContainer: {
+  iconSection: {
     alignItems: 'center',
-    marginVertical: 32,
+    paddingTop: 32,
+    paddingBottom: 36,
   },
   iconCircle: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(164, 214, 94, 0.2)',
+    backgroundColor: 'rgba(164, 214, 94, 0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(164, 214, 94, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#A4D65E',
+    marginBottom: 24,
   },
-  descricao: {
-    fontSize: 16,
-    fontWeight: '500',
+  titulo2: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 28,
-    lineHeight: 20,
+    marginBottom: 12,
   },
-  aviso: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: '#FFD6A5',
+  descricao: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.65)',
     textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 18,
-    marginTop: -10,
+    lineHeight: 22,
+    paddingHorizontal: 8,
   },
   erro: {
-    color: '#FFD6D6',
-    marginTop: -8,
-    marginBottom: 10,
+    color: '#FFB3B3',
+    marginTop: -4,
+    marginBottom: 8,
+    marginLeft: 4,
     fontSize: 12,
+  },
+  actionsSection: {
+    marginTop: 28,
+    gap: 16,
   },
   enviarButton: {
     backgroundColor: '#A4D65E',
-    borderRadius: 30,
+    borderRadius: 16,
     paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 32,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
+    elevation: 4,
+    shadowColor: '#A4D65E',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    borderColor: '#0E3B34',
   },
-  enviarButtonDisabled: {
-    opacity: 0.5,
-  },
+  buttonDisabled: { opacity: 0.5 },
   enviarButtonText: {
-    color: '#115E4C',
-    fontSize: 18,
+    color: '#0a2e28',
+    fontSize: 17,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  rodape: {
+  voltarButton: {
+    borderRadius: 16,
+    paddingVertical: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  voltarButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  link: {
-    textDecorationLine: 'underline',
-    fontWeight: '700',
-    color: '#C8DEA1',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

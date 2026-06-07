@@ -23,8 +23,8 @@ export default function DetailCards({ tipos, tempoAtras }: DetailCardsProps) {
           <Ionicons name="trash" size={24} color="#0A7D6F" />
         </View>
         <Text style={styles.detailCardLabel}>Tipo</Text>
-        <Text style={styles.detailCardValue} numberOfLines={1}>
-          {tipos.length > 0 ? tipos[0] : 'Geral'}
+        <Text style={styles.detailCardValue} numberOfLines={2}>
+          {tipos.length > 0 ? tipos.join(', ') : 'Geral'}
         </Text>
       </View>
 
@@ -32,8 +32,8 @@ export default function DetailCards({ tipos, tempoAtras }: DetailCardsProps) {
         <View style={[styles.iconBg, { backgroundColor: '#E3F2FD' }]}>
           <Ionicons name="time" size={24} color="#1976D2" />
         </View>
-        <Text style={styles.detailCardLabel}>Data</Text>
-        <Text style={styles.detailCardValue}>{tempoAtras}</Text>
+        <Text style={styles.detailCardLabel}>Postado</Text>
+        <Text style={styles.detailCardValue} numberOfLines={2}>{tempoAtras}</Text>
       </View>
     </View>
   );

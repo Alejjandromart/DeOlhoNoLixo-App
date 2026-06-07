@@ -83,12 +83,15 @@ const calcularTempoAtras = (date: Date): string => {
   const h = Math.floor(diff / 3_600_000);
   const d = Math.floor(diff / 86_400_000);
   if (min < 1) return 'agora';
-  if (min < 60) return `${min}min`;
-  if (h < 24) return `${h}h`;
-  if (d === 1) return '1 dia';
-  if (d < 7) return `${d} dias`;
-  if (d < 30) return `${Math.floor(d / 7)} sem.`;
-  return `${Math.floor(d / 30)} mês`;
+  if (min === 1) return 'há 1 minuto';
+  if (min < 60) return `há ${min} minutos`;
+  if (h === 1) return 'há 1 hora';
+  if (h < 24) return `há ${h} horas`;
+  if (d === 1) return 'há 1 dia';
+  if (d < 7) return `há ${d} dias`;
+  if (d < 30) return `há ${Math.floor(d / 7)} semana${Math.floor(d / 7) > 1 ? 's' : ''}`;
+  const m = Math.floor(d / 30);
+  return `há ${m} ${m === 1 ? 'mês' : 'meses'}`;
 };
 
 // Faz o upload direto para o Cloudinary via API REST

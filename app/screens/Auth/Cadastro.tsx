@@ -1,5 +1,4 @@
 import React, { useMemo, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { useNavigation } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -12,8 +11,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import CustomInput from '../../components/CustomInputCadastro';
 import CustomCheckbox from '../../components/CustomCheckbox';
@@ -38,11 +39,10 @@ interface CadastroScreenProps {
 }
 
 const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abrirLogin }, ref) => {
-  const navigation = useNavigation<any>();
   const { signUp } = useAuth();
+  const insets = useSafeAreaInsets();
   const [visivel, setVisivel] = useState(false);
 
-  // Refs para os campos de input
   const nomeCompletoInputRef = useRef<TextInput>(null);
   const emailInputRef = useRef<TextInput>(null);
   const nomeUsuarioInputRef = useRef<TextInput>(null);
@@ -54,7 +54,6 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
     fechar: () => setVisivel(false),
   }));
 
-  // Estado do formulário
   const [dados, setDados] = useState<DadosCadastro>({
     nomeCompleto: '',
     email: '',
@@ -70,7 +69,6 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
 
   const atualizar = useCallback((campo: keyof DadosCadastro, valor: string | boolean) => {
     setDados((prev) => ({ ...prev, [campo]: valor } as DadosCadastro));
-    // Limpar erro do campo ao digitar
     setErros((e) => ({ ...e, [campo]: undefined }));
   }, []);
 
@@ -82,33 +80,22 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
     if (!d.nomeUsuario.trim() || d.nomeUsuario.length < 3) e.nomeUsuario = 'Mín. 3 caracteres.';
     if (d.senha.length < 6) e.senha = 'Mín. 6 caracteres.';
     if (d.confirmarSenha !== d.senha) e.confirmarSenha = 'As senhas não coincidem.';
-    if (!d.termosAceitos) e.termos = 'Aceite os termos.';
+    if (!d.termosAceitos) e.termos = 'Aceite os termos para continuar.';
     return { valido: Object.keys(e).length === 0, erros: e };
   };
 
-  const resultado = useMemo(() => validar(dados), [dados]);
-
-  // Função de cadastro usando Firebase
   const handleSignUp = async () => {
     const { valido, erros: e } = validar(dados);
     if (!valido) return setErros(e);
 
     try {
       setCarregando(true);
-
-      // Definir flag ANTES do cadastro para evitar race condition com o AuthNavigator
-      // O onAuthStateChanged dispara assim que o signUp ocorre, antes desta função continuar
       await AsyncStorage.setItem('@isFirstLogin', 'true');
 
-      // Cadastrar usuário usando o contexto de autenticação
-      // Nota: Firebase Auth cria o usuário apenas com email e senha.
-      // Para salvar dados adicionais (nome, username), seria necessário usar Firestore ou updateProfile.
       const { error } = await signUp(dados.email, dados.senha);
 
       if (error) {
-        // Se falhar, remove a flag
         await AsyncStorage.removeItem('@isFirstLogin');
-
         const errorCode = error.code;
         if (errorCode === 'auth/email-already-in-use') {
           Alert.alert('Erro', 'Este e-mail já está em uso.');
@@ -118,13 +105,10 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
           Alert.alert('Erro', 'A senha é muito fraca.');
         } else {
           Alert.alert('Erro', 'Falha ao cadastrar. Tente novamente.');
-          console.error(error);
         }
         return;
       }
 
-      // Cadastro bem-sucedido
-      // Criar perfil no Firestore com os dados do formulário
       const currentUser = auth.currentUser;
       if (currentUser) {
         await setDoc(doc(db, 'users', currentUser.uid), {
@@ -133,15 +117,11 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
           cidade: '',
           updatedAt: serverTimestamp(),
         });
-        // Também atualiza Firebase Auth displayName
         await updateProfile(currentUser, { displayName: dados.nomeCompleto.trim() });
       }
 
-      console.log('✅ Cadastro bem-sucedido! Flag @isFirstLogin já definida.');
       setVisivel(false);
-      // O AuthNavigator vai detectar e redirecionar para Tutorial
     } catch (err) {
-      // Se der erro inesperado, remove a flag
       await AsyncStorage.removeItem('@isFirstLogin');
       Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
       console.error(err);
@@ -150,45 +130,43 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
     }
   };
 
-  const onCadastrar = handleSignUp;
-
   return (
     <Modal
       visible={visivel}
       animationType="slide"
-      transparent={true}
+      transparent={false}
+      statusBarTranslucent
       onRequestClose={() => setVisivel(false)}
     >
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1, justifyContent: 'flex-end' }}
+      <LinearGradient colors={['#076653', '#0a2e28']} style={styles.root}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity style={styles.botaoVoltar} onPress={() => setVisivel(false)}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.titulo}>Cadastro</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
-          {/* Conteúdo do sheet com gradiente e cantos arredondados para parecer o card da imagem */}
-          <LinearGradient
-            colors={['#076653', '#0E3B34']}
-            style={styles.cartao}
+          <ScrollView
+            contentContainerStyle={[styles.conteudo, { paddingBottom: insets.bottom + 32 }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            {/* Cabeçalho */}
-            <View style={styles.header}>
-              <TouchableOpacity style={styles.botaoVoltar} onPress={() => setVisivel(false)}>
-                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.titulo}>Cadastro</Text>
-              <View style={{ width: 40 }} />
-            </View>
+            <Text style={styles.boasVindas}>Bom ter você aqui</Text>
+            <Text style={styles.subtitulo}>Preencha os dados para criar sua conta</Text>
 
-            <ScrollView
-              contentContainerStyle={styles.conteudo}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              <Text style={styles.boasVindas}>Bom ter você aqui</Text>
-
+            <View style={styles.fieldsSection}>
               <CustomInput
                 ref={nomeCompletoInputRef}
                 rotulo="Nome Completo"
-                sugestao="Digite seu nome completo"
+                sugestao="Seu nome completo"
                 valor={dados.nomeCompleto}
                 aoAlterarTexto={(t) => atualizar('nomeCompleto', t)}
                 nomeIcone="person-outline"
@@ -201,8 +179,8 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
 
               <CustomInput
                 ref={emailInputRef}
-                rotulo="Email*"
-                sugestao="Digite seu email"
+                rotulo="E-mail"
+                sugestao="seu@email.com"
                 valor={dados.email}
                 aoAlterarTexto={(t) => atualizar('email', t)}
                 nomeIcone="mail-outline"
@@ -216,94 +194,103 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
               <CustomInput
                 ref={nomeUsuarioInputRef}
                 rotulo="Nome de Usuário"
-                sugestao="Digite seu nome de usuário"
+                sugestao="@seu_usuario"
                 valor={dados.nomeUsuario}
                 aoAlterarTexto={(t) => atualizar('nomeUsuario', t)}
-                nomeIcone="person-outline"
+                nomeIcone="at-outline"
                 erro={!!erros.nomeUsuario}
                 tipoRetorno="next"
                 aoEnviar={() => senhaInputRef.current?.focus()}
               />
               {erros.nomeUsuario ? <Text style={styles.erro}>{erros.nomeUsuario}</Text> : null}
 
-              <CustomInput
-                ref={senhaInputRef}
-                rotulo="Senha*"
-                sugestao="Digite sua senha"
-                valor={dados.senha}
-                aoAlterarTexto={(t) => atualizar('senha', t)}
-                nomeIcone="lock-closed-outline"
-                entradaSegura
-                mostrarToggleSenha
-                senhaVisivel={mostrarSenha}
-                aoAlternarSenha={() => setMostrarSenha((v) => !v)}
-                erro={!!erros.senha}
-                tipoRetorno="next"
-                aoEnviar={() => confirmarSenhaInputRef.current?.focus()}
-              />
-              {erros.senha ? <Text style={styles.erro}>{erros.senha}</Text> : null}
+              <View style={styles.senhasRow}>
+                <View style={styles.senhaField}>
+                  <CustomInput
+                    ref={senhaInputRef}
+                    rotulo="Senha"
+                    sugestao="Mín. 6 caracteres"
+                    valor={dados.senha}
+                    aoAlterarTexto={(t) => atualizar('senha', t)}
+                    nomeIcone="lock-closed-outline"
+                    entradaSegura
+                    mostrarToggleSenha
+                    senhaVisivel={mostrarSenha}
+                    aoAlternarSenha={() => setMostrarSenha((v) => !v)}
+                    erro={!!erros.senha}
+                    tipoRetorno="next"
+                    aoEnviar={() => confirmarSenhaInputRef.current?.focus()}
+                  />
+                  {erros.senha ? <Text style={styles.erro}>{erros.senha}</Text> : null}
+                </View>
+                <View style={styles.senhaField}>
+                  <CustomInput
+                    ref={confirmarSenhaInputRef}
+                    rotulo="Confirmar Senha"
+                    sugestao="Repita a senha"
+                    valor={dados.confirmarSenha}
+                    aoAlterarTexto={(t) => atualizar('confirmarSenha', t)}
+                    nomeIcone="lock-closed-outline"
+                    entradaSegura
+                    mostrarToggleSenha
+                    senhaVisivel={mostrarConfirmarSenha}
+                    aoAlternarSenha={() => setMostrarConfirmarSenha((v) => !v)}
+                    erro={!!erros.confirmarSenha}
+                    tipoRetorno="done"
+                    aoEnviar={handleSignUp}
+                  />
+                  {erros.confirmarSenha ? <Text style={styles.erro}>{erros.confirmarSenha}</Text> : null}
+                </View>
+              </View>
 
-              <CustomInput
-                ref={confirmarSenhaInputRef}
-                rotulo="Confirmar Senha*"
-                sugestao="Digite novamente a senha"
-                valor={dados.confirmarSenha}
-                aoAlterarTexto={(t) => atualizar('confirmarSenha', t)}
-                nomeIcone="lock-closed-outline"
-                entradaSegura
-                mostrarToggleSenha
-                senhaVisivel={mostrarConfirmarSenha}
-                aoAlternarSenha={() => setMostrarConfirmarSenha((v) => !v)}
-                erro={!!erros.confirmarSenha}
-                tipoRetorno="done"
-                aoEnviar={onCadastrar}
-              />
-              {erros.confirmarSenha ? <Text style={styles.erro}>{erros.confirmarSenha}</Text> : null}
+              <View style={styles.termosContainer}>
+                <CustomCheckbox
+                  value={dados.termosAceitos}
+                  onValueChange={(v) => atualizar('termosAceitos', v)}
+                  labelComponent={
+                    <Text style={styles.termosTexto}>
+                      Eu li e concordo com os <Text style={styles.link}>Termos e Condições</Text>
+                    </Text>
+                  }
+                />
+                {erros.termos ? <Text style={[styles.erro, { marginTop: 4 }]}>{erros.termos}</Text> : null}
+              </View>
+            </View>
 
-              <CustomCheckbox
-                value={dados.termosAceitos}
-                onValueChange={(v) => atualizar('termosAceitos', v)}
-                labelComponent={
-                  <Text style={styles.termosTexto}>
-                    Eu concordo com os <Text style={styles.link}>Terms & Conditions</Text>
-                  </Text>
-                }
-              />
-              {erros.termos ? <Text style={styles.erro}>{erros.termos}</Text> : null}
-
+            <View style={styles.actionsSection}>
               <TouchableOpacity
-                style={[
-                  styles.cadastrarButton,
-                  carregando && styles.cadastrarButtonDisabled
-                ]}
-                onPress={onCadastrar}
-                activeOpacity={0.8}
+                style={[styles.cadastrarButton, carregando && styles.buttonDisabled]}
+                onPress={handleSignUp}
+                activeOpacity={0.85}
                 disabled={carregando}
               >
                 {carregando ? (
-                  <ActivityIndicator color="#115E4C" />
+                  <ActivityIndicator color="#0a2e28" />
                 ) : (
-                  <Text style={styles.cadastrarButtonText}>Cadastrar</Text>
+                  <Text style={styles.cadastrarButtonText}>Criar Conta</Text>
                 )}
               </TouchableOpacity>
 
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>ou</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
               <TouchableOpacity
-                style={{ alignItems: 'center', marginTop: 8 }}
+                style={styles.loginButton}
                 onPress={() => {
                   setVisivel(false);
-                  setTimeout(() => {
-                    abrirLogin?.();
-                  }, 300);
+                  setTimeout(() => abrirLogin?.(), 300);
                 }}
+                activeOpacity={0.85}
               >
-                <Text style={styles.rodape}>
-                  Já tem uma conta? <Text style={styles.link}>Fazer Login</Text>
-                </Text>
+                <Text style={styles.loginButtonText}>Já tenho uma conta</Text>
               </TouchableOpacity>
-            </ScrollView>
-          </LinearGradient>
+            </View>
+          </ScrollView>
         </KeyboardAvoidingView>
-      </View>
+      </LinearGradient>
     </Modal>
   );
 });
@@ -311,22 +298,17 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
 export default CadastroScreen;
 
 const styles = StyleSheet.create({
-  cartao: {
+  root: {
     flex: 1,
-    marginHorizontal: 12,
-    marginBottom: 8,
-    borderRadius: 24,
-    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 4,
     justifyContent: 'space-between',
   },
-  botaoVoltar: { padding: 6 },
+  botaoVoltar: { padding: 8 },
   titulo: {
     color: '#FFFFFF',
     fontSize: 20,
@@ -335,54 +317,103 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   conteudo: {
-    paddingHorizontal: 18,
-    paddingBottom: 40,
     flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
   },
   boasVindas: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 16,
-    marginTop: 6,
+    marginBottom: 4,
   },
-  erro: { color: '#FFD6D6', marginTop: -8, marginBottom: 10, fontSize: 12 },
-  linhaTermos: { flexDirection: 'row', alignItems: 'center', marginTop: 2, marginBottom: 10 },
-  termosTexto: { color: '#FFFFFF', fontSize: 14, flex: 1 },
+  subtitulo: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  fieldsSection: {
+    gap: 2,
+  },
+  senhasRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  senhaField: {
+    flex: 1,
+  },
+  termosContainer: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  termosTexto: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    flex: 1,
+  },
   link: {
     textDecorationLine: 'underline',
     fontWeight: '700',
-    color: '#C8DEA1',
+    color: '#A4D65E',
+  },
+  erro: {
+    color: '#FFB3B3',
+    marginTop: -4,
+    marginBottom: 8,
+    marginLeft: 4,
+    fontSize: 11,
+  },
+  actionsSection: {
+    marginTop: 24,
+    gap: 16,
   },
   cadastrarButton: {
     backgroundColor: '#A4D65E',
-    borderRadius: 30,
+    borderRadius: 16,
     paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
+    elevation: 4,
+    shadowColor: '#A4D65E',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    borderWidth: 2,
-    borderColor: '#0E3B34',
   },
-  cadastrarButtonDisabled: {
-    opacity: 0.5,
-  },
+  buttonDisabled: { opacity: 0.5 },
   cadastrarButtonText: {
-    color: '#115E4C',
-    fontSize: 18,
+    color: '#0a2e28',
+    fontSize: 17,
     fontWeight: '700',
-    letterSpacing: 0.5
+    letterSpacing: 0.3,
   },
-  rodape: {
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  dividerText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+  },
+  loginButton: {
+    borderRadius: 16,
+    paddingVertical: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  loginButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

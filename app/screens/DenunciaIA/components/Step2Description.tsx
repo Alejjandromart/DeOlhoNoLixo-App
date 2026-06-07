@@ -17,6 +17,7 @@ interface Props {
 
 export default function Step2Description({ data, updateData, onGoBackToStep1 }: Props) {
   const [isAnalyzing, setIsAnalyzing] = useState(data.description.length === 0);
+  const [aiDone, setAiDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // AlertModal State
@@ -77,9 +78,9 @@ export default function Step2Description({ data, updateData, onGoBackToStep1 }: 
       });
     } catch (e: any) {
       console.error('Erro na análise da IA:', e);
-      
+
       const isInvalidImage = e.message && (
-        e.message.includes('não parece conter') || 
+        e.message.includes('não parece conter') ||
         e.message.includes('lixo ou poluição')
       );
 
@@ -89,11 +90,7 @@ export default function Step2Description({ data, updateData, onGoBackToStep1 }: 
           title: 'Imagem Inválida',
           message: e.message,
           confirmText: 'Tirar outra foto',
-          onConfirm: () => {
-            if (onGoBackToStep1) {
-              onGoBackToStep1();
-            }
-          },
+          onConfirm: () => { if (onGoBackToStep1) onGoBackToStep1(); },
           showCancel: false,
           cancelText: 'Cancelar',
           onCancel: () => {},
@@ -105,11 +102,7 @@ export default function Step2Description({ data, updateData, onGoBackToStep1 }: 
           title: 'Falha na Análise',
           message: e.message || 'Não foi possível analisar as imagens.',
           confirmText: 'Tirar outra foto',
-          onConfirm: () => {
-            if (onGoBackToStep1) {
-              onGoBackToStep1();
-            }
-          },
+          onConfirm: () => { if (onGoBackToStep1) onGoBackToStep1(); },
           showCancel: true,
           cancelText: 'Digitar manualmente',
           onCancel: () => {
@@ -120,12 +113,17 @@ export default function Step2Description({ data, updateData, onGoBackToStep1 }: 
         setShowLocalAlert(true);
       }
     } finally {
-      setIsAnalyzing(false);
+      setAiDone(true); // sinaliza que a IA terminou (com sucesso ou erro)
     }
   };
 
   if (isAnalyzing) {
-    return <AnalyzingState onComplete={() => {}} />;
+    return (
+      <AnalyzingState
+        aiDone={aiDone}
+        onComplete={() => setIsAnalyzing(false)}
+      />
+    );
   }
 
   return (

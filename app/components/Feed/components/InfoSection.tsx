@@ -30,7 +30,7 @@ export default function InfoSection({ localizacao, status, latitude, longitude }
   const statusColors = getStatusColors(status);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { marginBottom: 20 }]}>
       {/* Status Badge */}
       <View style={styles.statusContainer}>
         <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>

@@ -52,7 +52,7 @@ module.exports = {
   expo: {
     name: "DeOlho",
     slug: "DeOlho",
-    version: "1.0.0",
+    version: "2.3.3",
     orientation: "portrait",
     icon: "./app/assets/images/DeOlhoIcon.png",
     scheme: "deolhoapp",
@@ -72,7 +72,8 @@ module.exports = {
         foregroundImage: "./app/assets/images/DeOlhoIcon.png",
         backgroundColor: "#ffffff"
       },
-      package: "deolho.nolixo"
+      package: "deolho.nolixo",
+      softwareKeyboardLayoutMode: "pan"
     },
     web: {
       bundler: "metro",

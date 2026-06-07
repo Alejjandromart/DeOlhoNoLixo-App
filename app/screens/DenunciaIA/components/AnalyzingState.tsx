@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 interface AnalyzingStateProps {
     onComplete: () => void;
+    aiDone: boolean; // sinaliza que a IA real terminou
 }
 
-export default function AnalyzingState({ onComplete }: AnalyzingStateProps) {
+export default function AnalyzingState({ onComplete, aiDone }: AnalyzingStateProps) {
     const [progress, setProgress] = useState(0);
     const [currentStep, setCurrentStep] = useState(0);
-    const scaleAnim = new Animated.Value(1);
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const progressRef = useRef(0);
+    const doneCalledRef = useRef(false);
 
     const steps = [
         { label: 'Escaneando imagem...', icon: 'scan-outline', color: '#3B82F6' },
@@ -18,41 +21,45 @@ export default function AnalyzingState({ onComplete }: AnalyzingStateProps) {
         { label: 'Gerando relatório...', icon: 'document-text-outline', color: '#8B5CF6' },
     ];
 
+    // Quando IA termina e progresso já passou de 95%, conclui imediatamente
     useEffect(() => {
-        // Pulse animation
+        if (aiDone && progressRef.current >= 95 && !doneCalledRef.current) {
+            doneCalledRef.current = true;
+            setProgress(100);
+            setTimeout(onComplete, 400);
+        }
+    }, [aiDone]);
+
+    useEffect(() => {
         Animated.loop(
             Animated.sequence([
-                Animated.timing(scaleAnim, {
-                    toValue: 1.1,
-                    duration: 1000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(scaleAnim, {
-                    toValue: 1,
-                    duration: 1000,
-                    useNativeDriver: true,
-                }),
+                Animated.timing(scaleAnim, { toValue: 1.1, duration: 1000, useNativeDriver: true }),
+                Animated.timing(scaleAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
             ])
         ).start();
 
-        // Progress simulation
         const interval = setInterval(() => {
             setProgress((prev) => {
-                const remaining = 100 - prev;
-                const increment = Math.max(1, remaining * 0.1);
-                const next = prev + increment;
-
-                if (next >= 99.5) {
-                    clearInterval(interval);
-                    setTimeout(onComplete, 500);
-                    return 100;
+                const cap = aiDone ? 100 : 95; // trava em 95% enquanto IA não terminou
+                if (prev >= cap) {
+                    if (aiDone && !doneCalledRef.current) {
+                        doneCalledRef.current = true;
+                        clearInterval(interval);
+                        setTimeout(onComplete, 400);
+                        return 100;
+                    }
+                    return prev; // segura até a IA terminar
                 }
+                const remaining = cap - prev;
+                const increment = Math.max(0.5, remaining * 0.06);
+                const next = Math.min(prev + increment, cap);
+                progressRef.current = next;
                 return next;
             });
         }, 80);
 
         return () => clearInterval(interval);
-    }, [onComplete]);
+    }, [aiDone]);
 
     useEffect(() => {
         if (progress < 25) setCurrentStep(0);
@@ -64,20 +71,13 @@ export default function AnalyzingState({ onComplete }: AnalyzingStateProps) {
     return (
         <View style={styles.container}>
             <View style={styles.card}>
-                {/* Decorative backgrounds */}
                 <View style={[styles.blob, styles.blobTop]} />
                 <View style={[styles.blob, styles.blobBottom]} />
 
                 <View style={styles.content}>
-                    {/* Icon with pulse */}
                     <View style={styles.iconContainer}>
                         <View style={styles.pulseOuter} />
-                        <Animated.View
-                            style={[
-                                styles.iconCircle,
-                                { transform: [{ scale: scaleAnim }] },
-                            ]}
-                        >
+                        <Animated.View style={[styles.iconCircle, { transform: [{ scale: scaleAnim }] }]}>
                             <Ionicons
                                 name={steps[currentStep].icon as any}
                                 size={36}
@@ -89,20 +89,19 @@ export default function AnalyzingState({ onComplete }: AnalyzingStateProps) {
                         </Animated.View>
                     </View>
 
-                    {/* Text */}
                     <View style={styles.textContainer}>
                         <Text style={styles.stepLabel}>{steps[currentStep].label}</Text>
                         <Text style={styles.subtitle}>Processando Inteligência Artificial</Text>
                     </View>
 
-                    {/* Progress bar */}
                     <View style={styles.progressBarContainer}>
                         <View style={[styles.progressBar, { width: `${progress}%` }]}>
                             <View style={styles.shimmer} />
                         </View>
                     </View>
 
-                    {/* Step indicators */}
+                    <Text style={styles.progressText}>{Math.round(progress)}%</Text>
+
                     <View style={styles.stepIndicators}>
                         {steps.map((_, idx) => (
                             <View
@@ -147,24 +146,10 @@ const styles = StyleSheet.create({
         borderRadius: 64,
         opacity: 0.5,
     },
-    blobTop: {
-        top: -64,
-        right: -64,
-        backgroundColor: '#ECFDF5',
-    },
-    blobBottom: {
-        bottom: -64,
-        left: -64,
-        backgroundColor: '#EFF6FF',
-    },
-    content: {
-        alignItems: 'center',
-        zIndex: 10,
-    },
-    iconContainer: {
-        position: 'relative',
-        marginBottom: 24,
-    },
+    blobTop: { top: -64, right: -64, backgroundColor: '#ECFDF5' },
+    blobBottom: { bottom: -64, left: -64, backgroundColor: '#EFF6FF' },
+    content: { alignItems: 'center', zIndex: 10 },
+    iconContainer: { position: 'relative', marginBottom: 24 },
     pulseOuter: {
         position: 'absolute',
         width: 80,
@@ -227,10 +212,6 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         overflow: 'hidden',
         marginTop: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
         elevation: 1,
     },
     progressBar: {
@@ -241,16 +222,19 @@ const styles = StyleSheet.create({
     },
     shimmer: {
         position: 'absolute',
-        top: 0,
-        left: 0,
-        bottom: 0,
-        right: 0,
+        top: 0, left: 0, bottom: 0, right: 0,
         backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    progressText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+        marginTop: 6,
     },
     stepIndicators: {
         flexDirection: 'row',
         gap: 8,
-        marginTop: 24,
+        marginTop: 20,
     },
     stepDot: {
         width: 8,

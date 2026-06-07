@@ -1,5 +1,4 @@
 import React, { useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { useNavigation } from '@react-navigation/native';
 import {
   ActivityIndicator,
   View,
@@ -12,8 +11,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import CustomInput from '../../components/CustomInputCadastro';
 import { useAuth } from '../../context/AuthContext';
@@ -34,11 +35,10 @@ interface DadosLogin {
 }
 
 const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro, abrirEsqueciSenha }, ref) => {
-  const navigation = useNavigation<any>();
   const { signIn } = useAuth();
+  const insets = useSafeAreaInsets();
   const [visivel, setVisivel] = useState(false);
 
-  // Refs para os campos de input
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
 
@@ -47,11 +47,7 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
     fechar: () => setVisivel(false),
   }));
 
-  // Estado do formulário
-  const [dados, setDados] = useState<DadosLogin>({
-    email: '',
-    senha: '',
-  });
+  const [dados, setDados] = useState<DadosLogin>({ email: '', senha: '' });
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [emailError, setEmailError] = useState('');
@@ -59,103 +55,96 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
 
   const atualizar = useCallback((campo: keyof DadosLogin, valor: string) => {
     setDados((prev) => ({ ...prev, [campo]: valor }));
-    // Limpar erros ao digitar
     if (campo === 'email') setEmailError('');
     if (campo === 'senha') setPasswordError('');
   }, []);
 
-  // Função de login usando Firebase
   const handleSignIn = async () => {
     setEmailError('');
     setPasswordError('');
 
-    // Validações básicas
-    if (!dados.email.trim()) {
-      setEmailError('Campo obrigatório');
-      return;
-    }
-
-    if (!dados.senha.trim()) {
-      setPasswordError('Campo obrigatório');
-      return;
-    }
+    if (!dados.email.trim()) { setEmailError('Campo obrigatório'); return; }
+    if (!dados.senha.trim()) { setPasswordError('Campo obrigatório'); return; }
 
     try {
       setCarregando(true);
-
-      // Login com Firebase Auth
       const { error } = await signIn(dados.email, dados.senha);
 
       if (error) {
-        // Tratar erros específicos do Firebase Auth
         const errorCode = error.code;
         if (errorCode === 'auth/invalid-email') {
           setEmailError('E-mail inválido');
-        } else if (errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential') {
+        } else if (
+          errorCode === 'auth/user-not-found' ||
+          errorCode === 'auth/wrong-password' ||
+          errorCode === 'auth/invalid-credential'
+        ) {
           setEmailError('E-mail ou senha incorretos');
           setPasswordError('E-mail ou senha incorretos');
         } else if (errorCode === 'auth/too-many-requests') {
           Alert.alert('Erro', 'Muitas tentativas. Tente novamente mais tarde.');
         } else {
           Alert.alert('Erro', 'Falha ao fazer login. Verifique suas credenciais.');
-          console.error(error);
         }
         setCarregando(false);
         return;
       }
 
-      // Login bem-sucedido
       setVisivel(false);
-      // navigation.navigate('Feed'); // Removido - AuthNavigator cuida disso automaticamente
     } catch (err: any) {
-      console.error('Erro no login:', err);
       Alert.alert('Erro', 'Falha inesperada. Tente novamente.');
     } finally {
       setCarregando(false);
     }
   };
 
-  const handleLoginPress = handleSignIn;
-
   return (
     <Modal
       visible={visivel}
       animationType="slide"
-      transparent={true}
+      transparent={false}
+      statusBarTranslucent
       onRequestClose={() => setVisivel(false)}
     >
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1, justifyContent: 'flex-end' }}
+      <LinearGradient colors={['#076653', '#0a2e28']} style={styles.root}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity style={styles.botaoVoltar} onPress={() => setVisivel(false)}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.titulo}>Login</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
-          <LinearGradient
-            colors={['#076653', '#0E3B34']}
-            style={styles.cartao}
+          <ScrollView
+            contentContainerStyle={[styles.conteudo, { paddingBottom: insets.bottom + 32 }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            {/* Cabeçalho */}
-            <View style={styles.header}>
-              <TouchableOpacity style={styles.botaoVoltar} onPress={() => setVisivel(false)}>
-                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.titulo}>Login</Text>
-              <View style={{ width: 40 }} />
+            {/* Icon */}
+            <View style={styles.iconSection}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="person-outline" size={44} color="#A4D65E" />
+              </View>
+              <Text style={styles.boasVindas}>Bem-Vindo de Volta</Text>
+              <Text style={styles.subtitulo}>Entre com sua conta para continuar</Text>
             </View>
 
-            <ScrollView
-              contentContainerStyle={styles.conteudo}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              <Text style={styles.boasVindas}>Bem-Vindo de Volta</Text>
-
+            {/* Fields */}
+            <View style={styles.fieldsSection}>
               <CustomInput
                 ref={emailInputRef}
                 rotulo="E-mail"
                 sugestao="Digite seu e-mail"
                 valor={dados.email}
                 aoAlterarTexto={(t) => atualizar('email', t)}
-                nomeIcone="person-outline"
+                nomeIcone="mail-outline"
                 tipoTeclado="email-address"
                 erro={!!emailError}
                 tipoRetorno="next"
@@ -165,7 +154,7 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
 
               <CustomInput
                 ref={passwordInputRef}
-                rotulo="Senha*"
+                rotulo="Senha"
                 sugestao="Digite sua senha"
                 valor={dados.senha}
                 aoAlterarTexto={(t) => atualizar('senha', t)}
@@ -176,29 +165,27 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
                 aoAlternarSenha={() => setMostrarSenha((v) => !v)}
                 erro={!!passwordError}
                 tipoRetorno="done"
-                aoEnviar={handleLoginPress}
+                aoEnviar={handleSignIn}
               />
               {passwordError ? <Text style={styles.erro}>{passwordError}</Text> : null}
 
               <TouchableOpacity
-                style={{ alignSelf: 'flex-end', marginTop: 8 }}
+                style={styles.esqueciContainer}
                 onPress={() => {
                   setVisivel(false);
-                  setTimeout(() => {
-                    abrirEsqueciSenha?.();
-                  }, 300);
+                  setTimeout(() => abrirEsqueciSenha?.(), 300);
                 }}
               >
                 <Text style={styles.esqueceuSenha}>Esqueceu a senha?</Text>
               </TouchableOpacity>
+            </View>
 
+            {/* Actions */}
+            <View style={styles.actionsSection}>
               <TouchableOpacity
-                style={[
-                  styles.loginButton,
-                  carregando && styles.loginButtonDisabled
-                ]}
-                onPress={handleLoginPress}
-                activeOpacity={0.8}
+                style={[styles.loginButton, carregando && styles.buttonDisabled]}
+                onPress={handleSignIn}
+                activeOpacity={0.85}
                 disabled={carregando}
               >
                 {carregando ? (
@@ -208,23 +195,26 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
                 )}
               </TouchableOpacity>
 
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>ou</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
               <TouchableOpacity
-                style={{ alignItems: 'center', marginTop: 8 }}
+                style={styles.cadastroButton}
                 onPress={() => {
                   setVisivel(false);
-                  setTimeout(() => {
-                    abrirCadastro?.();
-                  }, 300);
+                  setTimeout(() => abrirCadastro?.(), 300);
                 }}
+                activeOpacity={0.85}
               >
-                <Text style={styles.rodape}>
-                  Ainda não tem conta? <Text style={styles.link}>Cadastre-se</Text>
-                </Text>
+                <Text style={styles.cadastroButtonText}>Criar uma conta</Text>
               </TouchableOpacity>
-            </ScrollView>
-          </LinearGradient>
+            </View>
+          </ScrollView>
         </KeyboardAvoidingView>
-      </View>
+      </LinearGradient>
     </Modal>
   );
 });
@@ -232,22 +222,17 @@ const LoginScreen = forwardRef<LoginSheetRef, LoginScreenProps>(({ abrirCadastro
 export default LoginScreen;
 
 const styles = StyleSheet.create({
-  cartao: {
+  root: {
     flex: 1,
-    marginHorizontal: 12,
-    marginBottom: 8,
-    borderRadius: 24,
-    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingHorizontal: 16,
     paddingBottom: 8,
     justifyContent: 'space-between',
   },
-  botaoVoltar: { padding: 6 },
+  botaoVoltar: { padding: 8 },
   titulo: {
     color: '#FFFFFF',
     fontSize: 20,
@@ -256,61 +241,107 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   conteudo: {
-    paddingHorizontal: 18,
-    paddingBottom: 40,
     flexGrow: 1,
+    paddingHorizontal: 24,
+  },
+  iconSection: {
+    alignItems: 'center',
+    paddingTop: 32,
+    paddingBottom: 36,
+  },
+  iconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(164, 214, 94, 0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(164, 214, 94, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   boasVindas: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 26,
+    fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 16,
-    marginTop: 6,
+    marginBottom: 6,
+  },
+  subtitulo: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+  },
+  fieldsSection: {
+    gap: 2,
   },
   erro: {
-    color: '#FFD6D6',
-    marginTop: -8,
-    marginBottom: 10,
-    fontSize: 12
+    color: '#FFB3B3',
+    marginTop: -4,
+    marginBottom: 8,
+    marginLeft: 4,
+    fontSize: 12,
+  },
+  esqueciContainer: {
+    alignSelf: 'flex-end',
+    marginTop: 10,
+    marginBottom: 4,
+    padding: 4,
   },
   esqueceuSenha: {
     color: '#70E0C4',
     fontSize: 14,
-    fontWeight: '600'
+    fontWeight: '600',
+  },
+  actionsSection: {
+    marginTop: 28,
+    gap: 16,
   },
   loginButton: {
     backgroundColor: '#A4D65E',
-    borderRadius: 30,
+    borderRadius: 16,
     paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
+    elevation: 4,
+    shadowColor: '#A4D65E',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    borderColor: '#0E3B34',
   },
-  loginButtonDisabled: {
-    opacity: 0.5,
-  },
+  buttonDisabled: { opacity: 0.5 },
   loginButtonText: {
-    color: '#115E4C',
-    fontSize: 18,
+    color: '#0a2e28',
+    fontSize: 17,
     fontWeight: '700',
-    letterSpacing: 0.5
+    letterSpacing: 0.3,
   },
-  rodape: {
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  dividerText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+  },
+  cadastroButton: {
+    borderRadius: 16,
+    paddingVertical: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  cadastroButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  link: {
-    textDecorationLine: 'underline',
-    fontWeight: '700',
-    color: '#C8DEA1',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

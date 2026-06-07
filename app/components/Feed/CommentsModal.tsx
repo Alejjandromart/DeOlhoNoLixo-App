@@ -36,7 +36,11 @@ export default function CommentsModal({ visible, onClose, comentarios, onAddComm
                     onPress={onClose}
                 />
 
-                <View style={[styles.modalContainer, { paddingBottom: insets.bottom }]}>
+                <KeyboardAvoidingView
+                    style={[styles.modalContainer, { paddingBottom: insets.bottom }]}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                >
                     {/* Header */}
                     <View style={styles.header}>
                         <View style={styles.dragHandle} />
@@ -50,6 +54,7 @@ export default function CommentsModal({ visible, onClose, comentarios, onAddComm
                     <ScrollView
                         style={styles.commentsContainer}
                         showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
                     >
                         {comentarios.length === 0 ? (
                             <View style={styles.emptyState}>
@@ -84,39 +89,34 @@ export default function CommentsModal({ visible, onClose, comentarios, onAddComm
                     </ScrollView>
 
                     {/* Input de Comentário */}
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={0}
-                    >
-                        <View style={styles.inputContainer}>
-                            <View style={styles.inputWrapper}>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Adicione um comentário..."
-                                    placeholderTextColor="#999"
-                                    value={commentText}
-                                    onChangeText={setCommentText}
-                                    multiline
-                                    maxLength={500}
+                    <View style={styles.inputContainer}>
+                        <View style={styles.inputWrapper}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Adicione um comentário..."
+                                placeholderTextColor="#999"
+                                value={commentText}
+                                onChangeText={setCommentText}
+                                multiline
+                                maxLength={500}
+                            />
+                            <TouchableOpacity
+                                onPress={handleSendComment}
+                                disabled={!commentText.trim()}
+                                style={[
+                                    styles.sendButton,
+                                    !commentText.trim() && styles.sendButtonDisabled
+                                ]}
+                            >
+                                <Ionicons
+                                    name="send"
+                                    size={20}
+                                    color={commentText.trim() ? '#0A7D6F' : '#CCC'}
                                 />
-                                <TouchableOpacity
-                                    onPress={handleSendComment}
-                                    disabled={!commentText.trim()}
-                                    style={[
-                                        styles.sendButton,
-                                        !commentText.trim() && styles.sendButtonDisabled
-                                    ]}
-                                >
-                                    <Ionicons
-                                        name="send"
-                                        size={20}
-                                        color={commentText.trim() ? '#0A7D6F' : '#CCC'}
-                                    />
-                                </TouchableOpacity>
-                            </View>
+                            </TouchableOpacity>
                         </View>
-                    </KeyboardAvoidingView>
-                </View>
+                    </View>
+                </KeyboardAvoidingView>
             </View>
         </Modal>
     );

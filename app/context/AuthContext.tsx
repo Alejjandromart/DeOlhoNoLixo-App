@@ -1,12 +1,13 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { auth } from '../lib/firebase';
-import { 
-  User, 
-  onAuthStateChanged, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut as firebaseSignOut, 
-  sendPasswordResetEmail 
+import {
+  User,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  deleteUser,
 } from 'firebase/auth';
 
 interface AuthContextData {
@@ -16,6 +17,7 @@ interface AuthContextData {
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
+  deleteAccount: () => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -82,6 +84,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await firebaseSignOut(auth);
   };
 
+  const deleteAccount = async () => {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return { error: new Error('Usuário não autenticado') };
+      await deleteUser(currentUser);
+      return { error: null };
+    } catch (error: any) {
+      return { error };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -91,6 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUp,
         signOut,
         resetPassword,
+        deleteAccount,
       }}
     >
       {children}

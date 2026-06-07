@@ -90,16 +90,16 @@ export default RenderItem;
 const styles = StyleSheet.create({
   itemContainer: {
     flex: 1,
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 130,
-    paddingTop: 40,
+    paddingBottom: 160,
+    paddingTop: 80,
   },
   itemText: {
     textAlign: 'center',
     fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginTop: 24,
     marginHorizontal: 20,
     lineHeight: 40,
   },
