@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import CustomInput from '../../components/CustomInputCadastro';
 import CustomCheckbox from '../../components/CustomCheckbox';
+import TermosCondicoes from '../../components/TermosCondicoes';
 import type {
   DadosCadastro,
   ErrosValidacao,
@@ -47,7 +48,6 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
   const emailInputRef = useRef<TextInput>(null);
   const nomeUsuarioInputRef = useRef<TextInput>(null);
   const senhaInputRef = useRef<TextInput>(null);
-  const confirmarSenhaInputRef = useRef<TextInput>(null);
 
   useImperativeHandle(ref, () => ({
     abrir: () => setVisivel(true),
@@ -63,7 +63,7 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
     termosAceitos: false,
   });
   const [mostrarSenha, setMostrarSenha] = useState(false);
-  const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
+  const [mostrarTermos, setMostrarTermos] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erros, setErros] = useState<ErrosValidacao>({});
 
@@ -79,7 +79,6 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
     if (!emailValido(d.email)) e.email = 'E-mail inválido.';
     if (!d.nomeUsuario.trim() || d.nomeUsuario.length < 3) e.nomeUsuario = 'Mín. 3 caracteres.';
     if (d.senha.length < 6) e.senha = 'Mín. 6 caracteres.';
-    if (d.confirmarSenha !== d.senha) e.confirmarSenha = 'As senhas não coincidem.';
     if (!d.termosAceitos) e.termos = 'Aceite os termos para continuar.';
     return { valido: Object.keys(e).length === 0, erros: e };
   };
@@ -204,44 +203,22 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
               />
               {erros.nomeUsuario ? <Text style={styles.erro}>{erros.nomeUsuario}</Text> : null}
 
-              <View style={styles.senhasRow}>
-                <View style={styles.senhaField}>
-                  <CustomInput
-                    ref={senhaInputRef}
-                    rotulo="Senha"
-                    sugestao="Mín. 6 caracteres"
-                    valor={dados.senha}
-                    aoAlterarTexto={(t) => atualizar('senha', t)}
-                    nomeIcone="lock-closed-outline"
-                    entradaSegura
-                    mostrarToggleSenha
-                    senhaVisivel={mostrarSenha}
-                    aoAlternarSenha={() => setMostrarSenha((v) => !v)}
-                    erro={!!erros.senha}
-                    tipoRetorno="next"
-                    aoEnviar={() => confirmarSenhaInputRef.current?.focus()}
-                  />
-                  {erros.senha ? <Text style={styles.erro}>{erros.senha}</Text> : null}
-                </View>
-                <View style={styles.senhaField}>
-                  <CustomInput
-                    ref={confirmarSenhaInputRef}
-                    rotulo="Confirmar Senha"
-                    sugestao="Repita a senha"
-                    valor={dados.confirmarSenha}
-                    aoAlterarTexto={(t) => atualizar('confirmarSenha', t)}
-                    nomeIcone="lock-closed-outline"
-                    entradaSegura
-                    mostrarToggleSenha
-                    senhaVisivel={mostrarConfirmarSenha}
-                    aoAlternarSenha={() => setMostrarConfirmarSenha((v) => !v)}
-                    erro={!!erros.confirmarSenha}
-                    tipoRetorno="done"
-                    aoEnviar={handleSignUp}
-                  />
-                  {erros.confirmarSenha ? <Text style={styles.erro}>{erros.confirmarSenha}</Text> : null}
-                </View>
-              </View>
+              <CustomInput
+                ref={senhaInputRef}
+                rotulo="Senha"
+                sugestao="Mín. 6 caracteres"
+                valor={dados.senha}
+                aoAlterarTexto={(t) => atualizar('senha', t)}
+                nomeIcone="lock-closed-outline"
+                entradaSegura
+                mostrarToggleSenha
+                senhaVisivel={mostrarSenha}
+                aoAlternarSenha={() => setMostrarSenha((v) => !v)}
+                erro={!!erros.senha}
+                tipoRetorno="done"
+                aoEnviar={handleSignUp}
+              />
+              {erros.senha ? <Text style={styles.erro}>{erros.senha}</Text> : null}
 
               <View style={styles.termosContainer}>
                 <CustomCheckbox
@@ -249,7 +226,10 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
                   onValueChange={(v) => atualizar('termosAceitos', v)}
                   labelComponent={
                     <Text style={styles.termosTexto}>
-                      Eu li e concordo com os <Text style={styles.link}>Termos e Condições</Text>
+                      Eu li e concordo com os{' '}
+                      <Text style={styles.link} onPress={() => setMostrarTermos(true)}>
+                        Termos e Condições
+                      </Text>
                     </Text>
                   }
                 />
@@ -291,6 +271,8 @@ const CadastroScreen = forwardRef<CadastroSheetRef, CadastroScreenProps>(({ abri
           </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
+
+      <TermosCondicoes visivel={mostrarTermos} aoFechar={() => setMostrarTermos(false)} />
     </Modal>
   );
 });
@@ -337,13 +319,6 @@ const styles = StyleSheet.create({
   fieldsSection: {
     gap: 2,
   },
-  senhasRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  senhaField: {
-    flex: 1,
-  },
   termosContainer: {
     marginTop: 8,
     marginBottom: 4,
@@ -375,11 +350,11 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#A4D65E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   buttonDisabled: { opacity: 0.5 },
   cadastrarButtonText: {

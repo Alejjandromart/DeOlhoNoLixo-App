@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Modal, Share, Platform, StatusBar, KeyboardAvoidingView } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import LikeExplosion from '../LikeExplosion';
@@ -17,6 +17,24 @@ import {
 import { Comentario } from '../../context/DenunciaContext';
 import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+
+const DESCRICAO_MAX = 120;
+
+function DescricaoTruncada({ descricao, onVerMais }: { descricao: string; onVerMais: () => void }) {
+  const longa = descricao.length > DESCRICAO_MAX;
+  const texto = longa ? descricao.slice(0, DESCRICAO_MAX).trimEnd() + '…' : descricao;
+
+  return (
+    <Text style={stylesCard.description}>
+      {texto}
+      {longa && (
+        <Text style={stylesCard.verMais} onPress={onVerMais}>
+          {' '}ver mais
+        </Text>
+      )}
+    </Text>
+  );
+}
 
 interface DenunciaCardProps {
   id: string;
@@ -68,6 +86,12 @@ export default function DenunciaCard({
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [localComments, setLocalComments] = useState<Comentario[]>(comentarios);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollTargetRef = useRef<'none' | 'descricao' | 'comentarios'>('none');
+  const bodyYRef = useRef(0);
+  const descricaoYRef = useRef(0);
+  const comentariosYRef = useRef(0);
+
   const helperCalcularTempoAtras = (date: Date): string => {
     const diff = Date.now() - date.getTime();
     const min = Math.floor(diff / 60_000);
@@ -116,11 +140,13 @@ export default function DenunciaCard({
     return () => unsubscribe();
   }, [expanded, commentsModalVisible, id]);
 
-  const handleCardPress = () => {
+  const handleCardPress = (target: 'none' | 'descricao' | 'comentarios' = 'none') => {
+    scrollTargetRef.current = target;
     setExpanded(true);
   };
 
   const handleCloseExpanded = () => {
+    scrollTargetRef.current = 'none';
     setExpanded(false);
   };
 
@@ -192,54 +218,54 @@ export default function DenunciaCard({
 
   return (
     <>
-      <TouchableOpacity activeOpacity={0.8} onPress={handleCardPress}>
-        <View style={styles.card}>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => handleCardPress('none')}>
+        <View style={stylesCard.card}>
       {/* Header do Card */}
-      <View style={styles.header}>
-        <View style={styles.userInfo}>
-          <View style={styles.avatar}>
+      <View style={stylesCard.header}>
+        <View style={stylesCard.userInfo}>
+          <View style={stylesCard.avatar}>
             {usuario.avatar ? (
-              <Image source={{ uri: usuario.avatar }} style={styles.avatarImage} />
+              <Image source={{ uri: usuario.avatar }} style={stylesCard.avatarImage} />
             ) : (
               <Ionicons name="person" size={24} color="#666" />
             )}
           </View>
-          <View style={styles.userDetails}>
-            <Text style={styles.userName}>{usuario.nome}</Text>
-            <View style={styles.metaInfo}>
-              <Text style={styles.location}>{localizacao}</Text>
-              <Text style={styles.separator}>•</Text>
-              <Text style={styles.time}>{tempoAtras}</Text>
+          <View style={stylesCard.userDetails}>
+            <Text style={stylesCard.userName}>{usuario.nome}</Text>
+            <View style={stylesCard.metaInfo}>
+              <Text style={stylesCard.location}>{localizacao}</Text>
+              <Text style={stylesCard.separator}>•</Text>
+              <Text style={stylesCard.time}>{tempoAtras}</Text>
             </View>
           </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-          <Text style={[styles.statusText, { color: statusColors.text }]}>{status}</Text>
+        <View style={[stylesCard.statusBadge, { backgroundColor: statusColors.bg }]}>
+          <Text style={[stylesCard.statusText, { color: statusColors.text }]}>{status}</Text>
         </View>
       </View>
 
-      {/* Descrição */}
-      <Text style={styles.description}>{descricao}</Text>
+      {/* Descrição com "ver mais" */}
+      <DescricaoTruncada descricao={descricao} onVerMais={() => handleCardPress('descricao')} />
 
       {/* Grid de Imagens */}
-      <View style={styles.imagesGrid}>
+      <View style={stylesCard.imagesGrid}>
         {imagens.slice(0, 4).map((uri, index) => (
           <View
             key={index}
             style={[
-              styles.imageContainer,
-              imagens.length === 1 && styles.imageSingle,
-              imagens.length === 2 && styles.imageDouble,
-              imagens.length === 3 && index === 0 && styles.imageTripleFirst,
-              imagens.length === 3 && index > 0 && styles.imageTripleOther,
-              imagens.length === 4 && styles.imageQuad,
+              stylesCard.imageContainer,
+              imagens.length === 1 && stylesCard.imageSingle,
+              imagens.length === 2 && stylesCard.imageDouble,
+              imagens.length === 3 && index === 0 && stylesCard.imageTripleFirst,
+              imagens.length === 3 && index > 0 && stylesCard.imageTripleOther,
+              imagens.length === 4 && stylesCard.imageQuad,
               { borderRadius: 16 }
             ]}
           >
-            <Image source={{ uri }} style={styles.image} />
+            <Image source={{ uri }} style={stylesCard.image} />
             {index === 3 && imagens.length > 4 && (
-              <View style={styles.moreImagesOverlay}>
-                <Text style={styles.moreImagesText}>+{imagens.length - 4}</Text>
+              <View style={stylesCard.moreImagesOverlay}>
+                <Text style={stylesCard.moreImagesText}>+{imagens.length - 4}</Text>
               </View>
             )}
           </View>
@@ -247,8 +273,8 @@ export default function DenunciaCard({
       </View>
 
       {/* Actions */}
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton} onPress={handleLikePress}>
+      <View style={stylesCard.actions}>
+        <TouchableOpacity style={stylesCard.actionButton} onPress={handleLikePress}>
           {showLikeExplosion ? (
             <LikeExplosion size={24} color="#FF3B30" particleCount={6} />
           ) : (
@@ -258,14 +284,17 @@ export default function DenunciaCard({
               color={localIsLiked ? '#FF3B30' : '#666'}
             />
           )}
-          {likes > 0 && <Text style={styles.actionText}>{likes}</Text>}
+          {likes > 0 && <Text style={stylesCard.actionText}>{likes}</Text>}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={handleOpenComments}>
-          <Ionicons name="chatbubble-outline" size={24} color="#666" />
+        <TouchableOpacity style={stylesCard.actionButton} onPress={() => handleCardPress('comentarios')}>
+          <Ionicons name="chatbubble-outline" size={22} color="#666" />
+          {localComments.length > 0 && (
+            <Text style={stylesCard.actionText}>{localComments.length}</Text>
+          )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+        <TouchableOpacity style={stylesCard.actionButton} onPress={handleShare}>
           <Ionicons name="share-outline" size={24} color="#666" />
         </TouchableOpacity>
       </View>
@@ -278,15 +307,25 @@ export default function DenunciaCard({
         animationType="slide"
         transparent={false}
         onRequestClose={handleCloseExpanded}
+        onShow={() => {
+          if (scrollTargetRef.current === 'none') return;
+          setTimeout(() => {
+            const y = scrollTargetRef.current === 'comentarios'
+              ? bodyYRef.current + comentariosYRef.current
+              : bodyYRef.current + descricaoYRef.current;
+            scrollViewRef.current?.scrollTo({ y, animated: true });
+          }, 200);
+        }}
       >
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <KeyboardAvoidingView
-          style={styles.expandedContainer}
+          style={stylesCard.expandedContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
         >
           <ScrollView
-            style={styles.expandedContent}
+            ref={scrollViewRef}
+            style={stylesCard.expandedContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
@@ -298,7 +337,7 @@ export default function DenunciaCard({
               {/* Botão de Voltar Estilo Perfil */}
               <TouchableOpacity 
                 onPress={handleCloseExpanded} 
-                style={styles.absoluteCloseButton}
+                style={stylesCard.absoluteCloseButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Ionicons name="arrow-back" size={26} color="#333" />
@@ -317,7 +356,10 @@ export default function DenunciaCard({
               longitude={longitude}
             />
 
-            <View style={styles.expandedBody}>
+            <View
+              style={stylesCard.expandedBody}
+              onLayout={(e) => { bodyYRef.current = e.nativeEvent.layout.y; }}
+            >
               {/* Info do Usuário */}
               <ExpandedUserInfo usuario={usuario} tempoAtras={tempoAtras} />
 
@@ -332,20 +374,24 @@ export default function DenunciaCard({
               {/* Tags de Tipos de Lixo */}
               <TagsList tipos={tipos} />
 
-              <View style={styles.divider} />
+              <View style={stylesCard.divider} />
 
               {/* Descrição Completa */}
-              <DescriptionSection descricao={descricao} />
+              <View onLayout={(e) => { descricaoYRef.current = e.nativeEvent.layout.y; }}>
+                <DescriptionSection descricao={descricao} />
+              </View>
 
-              <View style={styles.divider} />
+              <View style={stylesCard.divider} />
 
               {/* Cards de Detalhes */}
               <DetailCards tipos={tipos} tempoAtras={tempoAtras} />
 
-              <View style={styles.divider} />
+              <View style={stylesCard.divider} />
 
               {/* Seção de Comentários */}
-              <CommentsSection comentarios={localComments} />
+              <View onLayout={(e) => { comentariosYRef.current = e.nativeEvent.layout.y; }}>
+                <CommentsSection comentarios={localComments} />
+              </View>
             </View>
           </ScrollView>
 
@@ -369,7 +415,7 @@ export default function DenunciaCard({
   );
 }
 
-const styles = StyleSheet.create({
+const stylesCard = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -453,6 +499,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 10,
   },
+  verMais: {
+    fontWeight: '700',
+    color: '#0A7D6F',
+  },
   imagesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -530,8 +580,8 @@ const styles = StyleSheet.create({
   },
   absoluteCloseButton: {
     position: 'absolute',
-    top: 50,
-    left: 20,
+    top: 28,
+    left: 28,
     zIndex: 10,
     backgroundColor: 'white',
     borderRadius: 25,

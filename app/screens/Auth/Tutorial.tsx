@@ -493,20 +493,20 @@ const styles = StyleSheet.create({
   // RenderItem styles
   itemContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    marginBottom: 80,
+    paddingTop: 80,
   },
   visualContainer: {
     width: '100%',
-    height: 340,
+    height: 300,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
   },
   videoContainer: {
-    width: 240,
-    height: 340,
+    width: 210,
+    height: 300,
     borderRadius: 20,
     overflow: 'hidden',
     justifyContent: 'center',
@@ -541,16 +541,16 @@ const styles = StyleSheet.create({
   },
   itemText: {
     textAlign: 'center',
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 8,
     marginHorizontal: 20,
   },
   itemDescription: {
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 15,
     marginHorizontal: 30,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   circleContainer: {
     ...StyleSheet.absoluteFillObject,

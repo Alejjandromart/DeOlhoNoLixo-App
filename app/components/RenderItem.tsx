@@ -71,8 +71,8 @@ const RenderItem = ({index, x, item}: Props) => {
         <LottieView
           source={item.animation}
           style={{
-            width: SCREEN_WIDTH * 0.9,
-            height: SCREEN_WIDTH * 0.9,
+            width: SCREEN_WIDTH * 0.72,
+            height: SCREEN_WIDTH * 0.72,
           }}
           autoPlay
           loop
@@ -90,18 +90,18 @@ export default RenderItem;
 const styles = StyleSheet.create({
   itemContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingBottom: 160,
-    paddingTop: 80,
+    paddingBottom: 40,
+    paddingTop: 100,
   },
   itemText: {
     textAlign: 'center',
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginTop: 24,
-    marginHorizontal: 20,
-    lineHeight: 40,
+    marginTop: 20,
+    marginHorizontal: 24,
+    lineHeight: 32,
   },
   circleContainer: {
     ...StyleSheet.absoluteFillObject,

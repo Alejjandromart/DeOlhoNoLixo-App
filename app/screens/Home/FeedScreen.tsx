@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,8 +22,6 @@ const FeedScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const [refreshing, setRefreshing] = useState(false);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [filterOption, setFilterOption] = useState<'recente' | 'proximo'>('recente');
   const insets = useSafeAreaInsets();
 
   const [userData, setUserData] = useState<{ nome: string; avatar: string | null }>({
@@ -61,11 +58,6 @@ const FeedScreen: React.FC = () => {
     );
   }
 
-  const handleFilterSelect = (option: 'recente' | 'proximo') => {
-    setFilterOption(option);
-    setShowFilterMenu(false);
-  };
-
   const handleAddComment = (denunciaId: string, texto: string) => {
     const usuario = {
       nome: userData.nome,
@@ -88,7 +80,10 @@ const FeedScreen: React.FC = () => {
     }, 1000);
   };
 
-  const userName = userData.nome;
+  const userName = (() => {
+    const partes = userData.nome.trim().split(/\s+/);
+    return partes.slice(0, 2).join(' ');
+  })();
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
@@ -116,45 +111,7 @@ const FeedScreen: React.FC = () => {
                 </View>
                 <Text style={styles.subtitle}>Olá, {userName}</Text>
               </View>
-              <TouchableOpacity
-                onPress={() => setShowFilterMenu(!showFilterMenu)}
-                style={styles.filterButton}
-              >
-                <Ionicons name="options-outline" size={24} color="#333" />
-              </TouchableOpacity>
             </View>
-
-            {/* Menu de Filtro */}
-            {showFilterMenu && (
-              <View style={styles.filterMenu}>
-                <TouchableOpacity
-                  style={[styles.filterOption, filterOption === 'recente' && styles.filterOptionActive]}
-                  onPress={() => handleFilterSelect('recente')}
-                >
-                  <Ionicons
-                    name="time-outline"
-                    size={20}
-                    color={filterOption === 'recente' ? '#0A7D6F' : '#666'}
-                  />
-                  <Text style={[styles.filterText, filterOption === 'recente' && styles.filterTextActive]}>
-                    Mais Recente
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.filterOption, filterOption === 'proximo' && styles.filterOptionActive]}
-                  onPress={() => handleFilterSelect('proximo')}
-                >
-                  <Ionicons
-                    name="map-outline"
-                    size={20}
-                    color={filterOption === 'proximo' ? '#0A7D6F' : '#666'}
-                  />
-                  <Text style={[styles.filterText, filterOption === 'proximo' && styles.filterTextActive]}>
-                    Mais Próximo
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
 
 
             {denuncias.length === 0 ? (
@@ -242,47 +199,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 12,
     justifyContent: 'space-between',
-  },
-  filterButton: {
-    padding: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  filterMenu: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 12,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  filterOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    gap: 12,
-  },
-  filterOptionActive: {
-    backgroundColor: '#E8F5E9',
-  },
-  filterText: {
-    fontSize: 15,
-    color: '#666',
-    fontWeight: '500',
-  },
-  filterTextActive: {
-    color: '#0A7D6F',
-    fontWeight: '600',
   },
   feedCards: {
     gap: 0,

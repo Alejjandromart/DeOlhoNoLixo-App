@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Comentario } from '../../../context/DenunciaContext';
 
+const primeirosNomes = (nome: string) => nome.trim().split(/\s+/).slice(0, 2).join(' ');
+
 interface CommentsSectionProps {
   comentarios: Comentario[];
 }
@@ -33,7 +35,7 @@ export default function CommentsSection({ comentarios }: CommentsSectionProps) {
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarInitials}>
-                      {comentario.usuario.nome.charAt(0).toUpperCase()}
+                      {primeirosNomes(comentario.usuario.nome).charAt(0).toUpperCase()}
                     </Text>
                   </View>
                 )}
@@ -41,7 +43,7 @@ export default function CommentsSection({ comentarios }: CommentsSectionProps) {
               <View style={styles.commentContent}>
                 <View style={styles.commentBubble}>
                   <View style={styles.commentHeader}>
-                    <Text style={styles.commentAuthor}>{comentario.usuario.nome}</Text>
+                    <Text style={styles.commentAuthor}>{primeirosNomes(comentario.usuario.nome)}</Text>
                     <Text style={styles.commentTime}>{comentario.tempoAtras}</Text>
                   </View>
                   <Text style={styles.commentText}>{comentario.texto}</Text>

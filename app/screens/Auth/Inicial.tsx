@@ -10,7 +10,6 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import CadastroScreen from './Cadastro';
 import type { CadastroSheetRef } from './Cadastro';
@@ -19,6 +18,7 @@ import type { LoginSheetRef } from './Login';
 import EsqueciSenhaScreen from './EsqueciSenha';
 import type { EsqueciSenhaSheetRef } from './EsqueciSenha';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 // Navigation Types
@@ -38,6 +38,7 @@ const { width, height } = Dimensions.get('window');
 
 const HomeScreen: React.FC<HomeScreenProps> = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const cadastroRef = useRef<CadastroSheetRef>(null);
   const loginRef = useRef<LoginSheetRef>(null);
   const esqueciSenhaRef = useRef<EsqueciSenhaSheetRef>(null);
@@ -56,9 +57,9 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 
   return (
     <BottomSheetModalProvider>
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="#FFFFFF" />
-        
+      <View style={styles.safeArea}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
         <ImageBackground
           source={require('../../assets/images/backgroundInicial.png')}
           style={styles.backgroundImage}
@@ -87,7 +88,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
             </View>
 
             {/* Buttons Section - Bottom */}
-            <View style={styles.buttonSection}>
+            <View style={[styles.buttonSection, { marginBottom: insets.bottom + 24 }]}>
               <TouchableOpacity
                 style={[styles.button, styles.loginButton]}
                 onPress={handleLoginPress}
@@ -106,7 +107,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
             </View>
           </View>
         </ImageBackground>
-      </SafeAreaView>
+      </View>
 
       {/* BottomSheets que sobem sobre a tela inicial */}
       <LoginScreen ref={loginRef} abrirCadastro={handleRegisterPress} abrirEsqueciSenha={handleEsqueciSenhaPress} />
@@ -119,7 +120,7 @@ const HomeScreen: React.FC<HomeScreenProps> = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0E3B34',
+    backgroundColor: 'transparent',
   },
   backgroundImage: {
     flex: 1,
@@ -187,9 +188,8 @@ const styles = StyleSheet.create({
 
   // Button Section
   buttonSection: {
-    paddingBottom: 40,
+    paddingBottom: 16,
     gap: 16,
-    marginBottom: 40,
   },
   button: {
     width: '100%',

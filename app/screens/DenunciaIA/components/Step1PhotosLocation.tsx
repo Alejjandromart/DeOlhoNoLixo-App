@@ -58,43 +58,64 @@ export default function Step1PhotosLocation({ data, updateData }: Props) {
         setShowPhotoChoiceModal(true);
     };
 
-    const handleTakePhoto = async () => {
+    const handleTakePhoto = () => {
         setShowPhotoChoiceModal(false);
-        const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.2,
-            base64: true,
-        });
-
-        if (!result.canceled && result.assets[0]) {
-            const base64Str = result.assets[0].base64 ? `data:image/jpeg;base64,${result.assets[0].base64}` : '';
-            updateData({ 
-                photos: [...data.photos, result.assets[0].uri],
-                photosBase64: [...(data.photosBase64 || []), base64Str]
-            });
-        }
+        setTimeout(async () => {
+            try {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== 'granted') {
+                    showAlert('error', 'Permissão negada', 'Permissão de câmera não concedida. Habilite nas configurações do dispositivo.');
+                    return;
+                }
+                const result = await ImagePicker.launchCameraAsync({
+                    mediaTypes: ['images'],
+                    allowsEditing: true,
+                    aspect: [4, 3],
+                    quality: 0.2,
+                    base64: true,
+                });
+                if (!result.canceled && result.assets[0]) {
+                    const base64Str = result.assets[0].base64
+                        ? `data:image/jpeg;base64,${result.assets[0].base64}`
+                        : '';
+                    updateData({
+                        photos: [...data.photos, result.assets[0].uri],
+                        photosBase64: [...(data.photosBase64 || []), base64Str],
+                    });
+                }
+            } catch (e) {
+                console.error('Erro ao tirar foto:', e);
+                showAlert('error', 'Erro', 'Não foi possível acessar a câmera.');
+            }
+        }, 400);
     };
 
-    const handleChooseFromGallery = async () => {
+    const handleChooseFromGallery = () => {
         setShowPhotoChoiceModal(false);
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsMultipleSelection: true,
-            quality: 0.2,
-            selectionLimit: MAX_PHOTOS - data.photos.length,
-            base64: true,
-        });
-
-        if (!result.canceled) {
-            const newPhotos = result.assets.map((asset) => asset.uri);
-            const newBase64s = result.assets.map((asset) => asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : '');
-            updateData({ 
-                photos: [...data.photos, ...newPhotos].slice(0, MAX_PHOTOS),
-                photosBase64: [...(data.photosBase64 || []), ...newBase64s].slice(0, MAX_PHOTOS)
-            });
-        }
+        setTimeout(async () => {
+            try {
+                const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    allowsMultipleSelection: true,
+                    quality: 0.2,
+                    selectionLimit: MAX_PHOTOS - data.photos.length,
+                    base64: true,
+                });
+                if (!result.canceled) {
+                    const newPhotos = result.assets.map((a) => a.uri);
+                    const newBase64s = result.assets.map((a) =>
+                        a.base64 ? `data:image/jpeg;base64,${a.base64}` : ''
+                    );
+                    updateData({
+                        photos: [...data.photos, ...newPhotos].slice(0, MAX_PHOTOS),
+                        photosBase64: [...(data.photosBase64 || []), ...newBase64s].slice(0, MAX_PHOTOS),
+                    });
+                }
+            } catch (e) {
+                console.error('Erro ao abrir galeria:', e);
+                showAlert('error', 'Erro', 'Não foi possível acessar a galeria.');
+            }
+        }, 400);
     };
 
     const handleRemovePhoto = (index: number) => {

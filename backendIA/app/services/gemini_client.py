@@ -47,7 +47,7 @@ def generate_analysis(contents: List[dict]) -> dict:
         }
 
         model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash-lite",
+            model_name="gemini-2.5-flash",
             generation_config=generation_config,
             safety_settings=safety_settings,
         )

@@ -83,7 +83,7 @@ export default function ExpandedActions({
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-        <Ionicons name="share-social-outline" size={28} color="#666" />
+        <Ionicons name="share-outline" size={28} color="#666" />
         <Text style={styles.actionText}>Compartilhar</Text>
       </TouchableOpacity>
     </View>

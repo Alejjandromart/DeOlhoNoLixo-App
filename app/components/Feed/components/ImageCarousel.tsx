@@ -20,24 +20,26 @@ export default function ImageCarousel({ imagens, onIndexChange, width = SCREEN_W
     onIndexChange?.(index);
   };
 
+  const innerWidth = width - 32;
+
   return (
-    <View style={[styles.container, style, { width }]}>
+    <View style={[styles.container, style, { width: innerWidth }]}>
       <ScrollView
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        style={{ width, height: 280 }}
-        contentContainerStyle={{ width: width * imagens.length }}
+        style={{ width: innerWidth, height: 260 }}
+        contentContainerStyle={{ width: innerWidth * imagens.length }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         decelerationRate="fast"
-        snapToInterval={width}
+        snapToInterval={innerWidth}
       >
         {imagens.map((uri, index) => (
-          <Image 
-            key={index} 
-            source={{ uri }} 
-            style={[styles.image, { width }]} 
+          <Image
+            key={index}
+            source={{ uri }}
+            style={[styles.image, { width: innerWidth }]}
           />
         ))}
       </ScrollView>
@@ -62,15 +64,16 @@ export default function ImageCarousel({ imagens, onIndexChange, width = SCREEN_W
 
 const styles = StyleSheet.create({
   container: {
-    height: 320,
+    height: 260,
     backgroundColor: '#F5F5F5',
     overflow: 'hidden',
-    borderRadius: 24,
+    borderRadius: 16,
     marginHorizontal: 16,
-    marginTop: 0,
+    marginTop: 16,
+    alignSelf: 'center',
   },
   image: {
-    height: 320,
+    height: 260,
     resizeMode: 'cover',
   },
   pagination: {

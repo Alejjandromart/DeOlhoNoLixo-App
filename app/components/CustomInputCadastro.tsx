@@ -23,7 +23,6 @@ const CustomInput = forwardRef<TextInput, InputProps>(({
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const [localValue, setLocalValue] = useState(valor);
-  const timerRef = useRef<any>(null);
 
   // Expor métodos do TextInput para o componente pai
   useImperativeHandle(ref, () => ({
@@ -50,17 +49,8 @@ const CustomInput = forwardRef<TextInput, InputProps>(({
   }, []);
 
   const handleChangeText = useCallback((text: string) => {
-    // Atualiza imediatamente o valor local (não causa re-render do pai)
     setLocalValue(text);
-    
-    // Debounce ao chamar o callback do pai para evitar re-renders excessivos
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    
-    timerRef.current = setTimeout(() => {
-      aoAlterarTexto(text);
-    }, 0);
+    aoAlterarTexto(text);
   }, [aoAlterarTexto]);
 
   return (
